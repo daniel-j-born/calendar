@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="{{css_url}}" type="text/css" />
+    <script src="{{forms_js}}" type="text/javascript"/>
+    <title>Repeating Events Generator</title>
+</head>
+<body  onload="addEvent()">
+  <h1 align="center">Repeating Events Generator</h1>
+
+  <form method="post" action="{{form_action}}">
+    <table>
+      <tr><td>Start Time</td><td><input type="datetime-local" name="start_time"/></td></tr>
+      <tr><td>End Time  </td><td><input type="datetime-local" name="end_time"/></td></tr>
+    </table><br/>
+
+    <input id="num_events" type="hidden" value="0"/>
+    <table id="events">
+      <tr><th>Event</th><th>Period (HH:MM)</th></tr>
+    </table>
+
+    <input type="button" value="Add Event" onclick="addEvent()"/>
+    <input type="submit" value="Create Schedule"/>
+  </form>
+</body>
+</html>
