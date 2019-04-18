@@ -8,6 +8,7 @@ function addEvent() {
     var summary_input = document.createElement("input");
     summary_input.name = "summary_" + (num_events.value - 1);
     summary_input.type = "text";
+    summary_input.value = "HH:MM";
     summary_td.appendChild(summary_input);
     tr.appendChild(summary_td);
 
@@ -15,10 +16,24 @@ function addEvent() {
     var period_input = document.createElement("input");
     period_input.name = "period_" + (num_events.value - 1);
     period_input.type = "text";
+    period_input.value = "HH:MM";
     period_td.appendChild(period_input);
     tr.appendChild(period_td);
 
     container.appendChild(tr);
 }
 
-window.onload = addEvent();
+function onLoad() {
+    // Set start and end times to current time.
+    var now = Date();
+    var now_str = now.getFullYear() + '/' + (now.getMonth() + 1) + '/' +
+      now.getDate() + ' ' + now.getHours() + ':' + now.getMinutes();
+    var el = document.getElementById("start_time");
+    el.value = now_str;
+    el = document.getElementById("end_time");
+    el.value = now_str;
+
+    // Add first event.
+    addEvent();
+}
+

@@ -5,13 +5,34 @@
     <script src="{{forms_js}}" type="text/javascript"/>
     <title>Repeating Events Generator</title>
 </head>
-<body  onload="addEvent()">
+<body  onload="onLoad()">
   <h1 align="center">Repeating Events Generator</h1>
 
   <form method="post" action="{{form_action}}">
     <table>
-      <tr><td>Start Time</td><td><input type="datetime-local" name="start_time"/></td></tr>
-      <tr><td>End Time  </td><td><input type="datetime-local" name="end_time"/></td></tr>
+      <tr><td>Start Time (YYYY/MM/DD HH:MM)</td><td>
+      <input type="text" name="start_time" id="start_time"/></td></tr>
+      <tr><td>End Time   (YYYY/MM/DD HH:MM)</td><td>
+      <input type="text" name="end_time" id="end_time"/></td></tr>
+      <tr><td>If two events occur at the same time, merge them into a single
+      event?</td><td>
+      <input type="checkbox" name="merge_overlapping"
+      {{event_config.merge_overlapping}}/></td></tr>
+      <tr><td>How long should be each event?</td><td><input type="text"
+      name="event_duration" value="{{event_config.event_duration}}"/></td></tr>
+      <tr><td>Set alarms?</td><td><input type="checkbox" name="set_alarms"
+      {{event_config.set_alarms}}/></td></tr>
+      <tr><td>How many seconds before the event should the alarm occur?</td><td>
+      <input type="text" name="alarm_before_secs"
+      value="{{event_config.alarm_before_secs}}"/></td></tr>
+      <tr><td>Alarms repeat?</td><td><input type="checkbox" name="alarms_repeat"
+      {{event_config.alarms_repeat}}/></td></tr>
+      <tr><td>If alarms repeat, how many repititions?</td><td>
+      <input type="text" name="alarm_repititions"
+      value="{{event_config.alarm_repititions}}"/></td></tr>
+      <tr><td>If alarms repeat, how many seconds between each repitition?</td>
+      <td><input type="text" name="alarm_repitition_delay_secs"
+      value="{{event_config.alarm_repitition_delay_secs}}"/></td></tr>
     </table><br/>
 
     <input id="num_events" type="hidden" value="0"/>
