@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+#
+# Deprecated in favor of the iCalendar based web app.
+#
+# Use Google Calendar API and oauth to write directly into Google calendar with
+# the configured parameters.
+#
 
 import apiclient
 import argparse
