@@ -8,7 +8,6 @@ function addEvent() {
     var summary_input = document.createElement("input");
     summary_input.name = "summary_" + (num_events.value - 1);
     summary_input.type = "text";
-    summary_input.value = "HH:MM";
     summary_td.appendChild(summary_input);
     tr.appendChild(summary_td);
 
@@ -23,9 +22,9 @@ function addEvent() {
     container.appendChild(tr);
 }
 
-function onLoad() {
+function formsOnload() {
     // Set start and end times to current time.
-    var now = Date();
+    var now = new Date();
     var now_str = now.getFullYear() + '/' + (now.getMonth() + 1) + '/' +
       now.getDate() + ' ' + now.getHours() + ':' + now.getMinutes();
     var el = document.getElementById("start_time");
@@ -36,4 +35,3 @@ function onLoad() {
     // Add first event.
     addEvent();
 }
-

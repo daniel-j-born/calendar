@@ -82,8 +82,8 @@ class ScheduleBuilder(object):
   def __init__(self, start_time, end_time):
     """start_time and end_time are an inclusive range: events can occur
     at these precise times."""
-    self._start_time = start_time
-    self._end_time = end_time
+    self.start_time = start_time
+    self.end_time = end_time
     # List of (summary, datetime.timedelta).
     self._repeating_events = []
     self.SetDefaults()
@@ -114,8 +114,8 @@ class ScheduleBuilder(object):
     events = {}
     cal = CalendarBuilder(uid_gen)
     for summary, period in self._repeating_events:
-      next_event_time = self._start_time
-      while next_event_time <= self._end_time:
+      next_event_time = self.start_time
+      while next_event_time <= self.end_time:
         next_event_time_events = events.setdefault(next_event_time, [])
         if self.merge_overlap and next_event_time_events:
           ev_summary = next_event_time_events[0].get('summary')

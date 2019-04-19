@@ -15,7 +15,8 @@ application = flask.Flask(__name__)
 
 @application.route('/testing/repeating_ical_events', methods=['GET', 'POST'])
 def RepeatingIcalEvents():
-  handler = repeating_ical_events_flask.RequestHandler(uid_gens, flask.request)
+  handler = repeating_ical_events_flask.RequestHandler(
+    uid_gens, application, flask.request)
   return handler.Response()
 
 # def application(environ, start_response):

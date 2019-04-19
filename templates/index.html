@@ -2,46 +2,49 @@
 <html lang="en">
   <head>
     <link rel="stylesheet" href="{{css_url}}" type="text/css" />
-    <script src="{{forms_js}}" type="text/javascript"/>
+    <script src="{{forms_js}}" type="text/javascript">
+    </script>
     <title>Repeating Events Generator</title>
 </head>
-<body  onload="onLoad()">
+<body  onload="formsOnload()">
   <h1 align="center">Repeating Events Generator</h1>
 
   <form method="post" action="{{form_action}}">
     <table>
       <tr><td>Start Time (YYYY/MM/DD HH:MM)</td><td>
-      <input type="text" name="start_time" id="start_time"/></td></tr>
+      <input type="text" name="start_time" id="start_time" /></td></tr>
       <tr><td>End Time   (YYYY/MM/DD HH:MM)</td><td>
-      <input type="text" name="end_time" id="end_time"/></td></tr>
+      <input type="text" name="end_time" id="end_time" /></td></tr>
       <tr><td>If two events occur at the same time, merge them into a single
       event?</td><td>
       <input type="checkbox" name="merge_overlapping"
-      {{event_config.merge_overlapping}}/></td></tr>
-      <tr><td>How long should be each event?</td><td><input type="text"
-      name="event_duration" value="{{event_config.event_duration}}"/></td></tr>
+      {{event_config.merge_overlapping}} /></td></tr>
+      <tr><td>How many seconds should each event be?</td><td><input type="text"
+      name="event_duration_secs" value="{{event_config.event_duration_secs}}" /></td></tr>
+      <tr><td>Show as busy during events?</td><td>
+      <input type="checkbox" name="show_busy" {{event_config.show_busy}} /></td></tr>
       <tr><td>Set alarms?</td><td><input type="checkbox" name="set_alarms"
-      {{event_config.set_alarms}}/></td></tr>
+      {{event_config.set_alarms}} /></td></tr>
       <tr><td>How many seconds before the event should the alarm occur?</td><td>
       <input type="text" name="alarm_before_secs"
-      value="{{event_config.alarm_before_secs}}"/></td></tr>
+      value="{{event_config.alarm_before_secs}}" /></td></tr>
       <tr><td>Alarms repeat?</td><td><input type="checkbox" name="alarms_repeat"
-      {{event_config.alarms_repeat}}/></td></tr>
+      {{event_config.alarms_repeat}} /></td></tr>
       <tr><td>If alarms repeat, how many repititions?</td><td>
       <input type="text" name="alarm_repititions"
-      value="{{event_config.alarm_repititions}}"/></td></tr>
+      value="{{event_config.alarm_repititions}}" /></td></tr>
       <tr><td>If alarms repeat, how many seconds between each repitition?</td>
       <td><input type="text" name="alarm_repitition_delay_secs"
-      value="{{event_config.alarm_repitition_delay_secs}}"/></td></tr>
-    </table><br/>
+      value="{{event_config.alarm_repitition_delay_secs}}" /></td></tr>
+    </table><br />
 
-    <input id="num_events" type="hidden" value="0"/>
+    <input id="num_events" type="hidden" value="0" />
     <table id="events">
       <tr><th>Event</th><th>Period (HH:MM)</th></tr>
     </table>
 
-    <input type="button" value="Add Event" onclick="addEvent()"/>
-    <input type="submit" value="Create Schedule"/>
+    <input type="button" value="Add Event" onclick="addEvent()" />
+    <input type="submit" value="Create Schedule" />
   </form>
 </body>
 </html>
