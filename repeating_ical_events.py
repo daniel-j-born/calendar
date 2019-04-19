@@ -69,7 +69,7 @@ class CalendarBuilder(icalendar.Calendar):
     # prodid and version are required properties of vcalendar.
     self.add('version', '1.0')
     self.add('prodid', '-//' + uid_gen.BaseDomain() +
-               '//repeating_ical_events v1.0//EN')
+               '//repeating_events v1.0//EN')
 
   def AddEvent(self):
     """Return an EventBuilder for a vevent to be added."""
@@ -104,6 +104,8 @@ class ScheduleBuilder(object):
     """Summary should be a short, single line of text."""
     self._repeating_events.append((summary, period))
     return self
+
+  def NumEvents(self): return len(self._repeating_events)
 
   def BuildCalendar(self, uid_gen):
     """Return a icalendar.Calendar object for the schedule. RRULEs of

@@ -17,16 +17,35 @@ function addEvent() {
     period_input.type = "text";
     period_input.value = "HH:MM";
     period_td.appendChild(period_input);
-    tr.appendChild(period_td);
 
+    var delete_button = document.createElement("input");
+    delete_button.type = "button";
+    delete_button.name = "delete_" + (num_events.value - 1);
+    delete_button.id = "delete_" + (num_events.value - 1);
+    delete_button.value = "Delete Event";
+    delete_button.onclick = function() { container.removeChild(tr); };
+    period_td.appendChild(delete_button);
+    tr.appendChild(period_td);
     container.appendChild(tr);
 }
 
 function formsOnload() {
     // Set start and end times to current time.
     var now = new Date();
+    var hours_str;
+    if (now.getHours() < 10) {
+        hours_str = '0' + now.getHours();
+    } else {
+        hours_str = '' + now.getHours();
+    }
+    var minutes_str;
+    if (now.getMinutes() < 10) {
+        minutes_str = '0' + now.getMinutes();
+    } else {
+        minutes_str = '' + now.getMinutes();
+    }
     var now_str = now.getFullYear() + '/' + (now.getMonth() + 1) + '/' +
-      now.getDate() + ' ' + now.getHours() + ':' + now.getMinutes();
+      now.getDate() + ' ' + hours_str + ':' + minutes_str;
     var el = document.getElementById("start_time");
     el.value = now_str;
     el = document.getElementById("end_time");

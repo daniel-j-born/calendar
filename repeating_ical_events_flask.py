@@ -201,13 +201,13 @@ class RequestHandler(object):
       
   def _ParseEvents(self, sched):
     max_events = 200
-    for i in range(max_events):
-      summary_name = 'summary_%d' % i
-      period_name = 'period_%d' % i
-      if (not summary_name in self._req.form or
-          not period_name in self._req.form):
-        break
-      summary = self._ParseEventSummary(summary_name)
+    for name in self._req.form:
+      m = re.match(r'summary_(\d+)$', name)
+      if not m:
+        continue
+      event_num_str = m.group(1)
+      period_name = 'period_' + event_num_str
+      summary = self._ParseEventSummary(name)
       try:
         period = self._ParseEventPeriod(period_name)
       except ErrorPageError as err:
@@ -219,6 +219,9 @@ class RequestHandler(object):
       if num_reps > 1000:
         raise ErrorPageError(user_message='Invalid number of repititions for %s: %d' % (
           summary, num_reps))
+      if sched.NumEvents() >= max_events:
+        raise ErrorPageError(
+          user_message='Too many events: %d' % sched.NumEvents())
       sched.AddRepeatingEvent(summary, period)
 
   def _CalendarDownload(self):

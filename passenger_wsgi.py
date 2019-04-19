@@ -13,7 +13,7 @@ import repeating_ical_events_flask
 uid_gens = repeating_ical_events_flask.HostUidGen()
 application = flask.Flask(__name__)
 
-@application.route('/testing/repeating_ical_events', methods=['GET', 'POST'])
+@application.route('/testing/repeating_events', methods=['GET', 'POST'])
 def RepeatingIcalEvents():
   handler = repeating_ical_events_flask.RequestHandler(
     uid_gens, application, flask.request)
