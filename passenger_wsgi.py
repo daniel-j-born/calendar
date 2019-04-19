@@ -13,15 +13,11 @@ import repeating_ical_events_flask
 uid_gens = repeating_ical_events_flask.HostUidGen()
 application = flask.Flask(__name__)
 
-@application.route('/testing/repeating_events', methods=['GET', 'POST'])
+@application.route('/', methods=['GET', 'POST'])
 def RepeatingIcalEvents():
+  # Fix up path. Server interface passes '/', which is not correct. We need to
+  # route '/' to get here and then fixup the path.
+  flask.request.path = '/repeating_events'
   handler = repeating_ical_events_flask.RequestHandler(
     uid_gens, application, flask.request)
   return handler.Response()
-
-# def application(environ, start_response):
-#   start_response('200 OK', [('Content-Type', 'text/plain')])
-#   message = 'It works!\n'
-#   version = 'Python %s\n' % sys.version.split()[0]
-#   response = '\n'.join([message, version])
-#   return [response.encode()]
