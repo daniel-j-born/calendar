@@ -32,4 +32,7 @@ templates/index.html
 
 # TODO
 
-* Done!
+* Maybe some kind of border in the form table so the labels line up with the
+  inputs.
+* Change the orientation so the inputs are to the left of labels.
+* Make repository public.
