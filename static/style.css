@@ -1,3 +1,30 @@
+.configinput {
+    align: right;
+    text-align: right;
+}
+
+.configinput input {
+    align: right;
+    text-align: right;
+}
+
+.eventsummary {
+    align: right;
+    text-align: right;
+}
+
+.eventsummary input {
+    align: right;
+    text-align: right;
+}
+
+.error {
+    color: #ff0000;
+    background-color: #cfcac6;
+    display: inline;
+    font-weight: bold;
+}
+
 body {
     background-color: #8a8784;
     color: #000000;

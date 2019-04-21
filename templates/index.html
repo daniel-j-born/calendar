@@ -1,50 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="stylesheet" href="{{css_url}}" type="text/css" />
-    <script src="{{forms_js}}" type="text/javascript">
+    <link rel="stylesheet" href="{{css_url|e}}" type="text/css" />
+    <script src="{{forms_js|e}}" type="text/javascript">
     </script>
-    <title>Repeating Events Generator</title>
-</head>
-<body  onload="formsOnload()">
-  <h1 align="center">Repeating Events Generator</h1>
+    <title>Repeating Events Scheduler</title>
+  </head>
+  <body  onload="formsOnload()">
+    <h1 class="section">Repeating Events Scheduler</h1>
 
-  <form method="post" action="{{form_action}}">
-    <table>
-      <tr><td>Start Time (YYYY/MM/DD HH:MM)</td><td>
-      <input type="text" name="start_time" id="start_time" /></td></tr>
-      <tr><td>End Time   (YYYY/MM/DD HH:MM)</td><td>
-      <input type="text" name="end_time" id="end_time" /></td></tr>
-      <tr><td>If two events occur at the same time, merge them into a single
-      event?</td><td>
-      <input type="checkbox" name="merge_overlapping"
-      {{event_config.merge_overlapping}} /></td></tr>
-      <tr><td>How many seconds should each event be?</td><td><input type="text"
-      name="event_duration_secs" value="{{event_config.event_duration_secs}}" /></td></tr>
-      <tr><td>Show as busy during events?</td><td>
-      <input type="checkbox" name="show_busy" {{event_config.show_busy}} /></td></tr>
-      <tr><td>Set alarms?</td><td><input type="checkbox" name="set_alarms"
-      {{event_config.set_alarms}} /></td></tr>
-      <tr><td>How many seconds before the event should the alarm occur?</td><td>
-      <input type="text" name="alarm_before_secs"
-      value="{{event_config.alarm_before_secs}}" /></td></tr>
-      <tr><td>Alarms repeat?</td><td><input type="checkbox" name="alarms_repeat"
-      {{event_config.alarms_repeat}} /></td></tr>
-      <tr><td>If alarms repeat, how many repititions?</td><td>
-      <input type="text" name="alarm_repititions"
-      value="{{event_config.alarm_repititions}}" /></td></tr>
-      <tr><td>If alarms repeat, how many seconds between each repitition?</td>
-      <td><input type="text" name="alarm_repitition_delay_secs"
-      value="{{event_config.alarm_repitition_delay_secs}}" /></td></tr>
-    </table><br />
+    <form method="post" action="{{form_action|e}}">
+      <table>
+        <tr><td class="configinput">
+            <input type="text" name="start_time" id="start_time"
+                   value="{{event_config.start_time|e}}" /></td>
+          <td>Start Time (YYYY/MM/DD HH:MM)</td></tr>
+        <tr><td class="configinput">
+            <input type="text" name="end_time" id="end_time"
+                   value="{{event_config.end_time|e}}" /></td>
+        <td>End Time (YYYY/MM/DD HH:MM)</td></tr>
+        <tr><td class="configinput">
+            <input type="checkbox" name="merge_overlapping"
+                   id="merge_overlapping"
+                   {{event_config.merge_overlapping|e}} /></td>
+        <td>If two events occur at the same time, merge them into a single
+            event.</td></tr>
+        <tr><td class="configinput">
+            <input type="text" name="event_duration_secs"
+                   id="event_duration_secs"
+                   value="{{event_config.event_duration_secs|e}}" /></td>
+        <td>Duration of each event.</td></tr>
+        <tr><td class="configinput">
+            <input type="checkbox" name="show_busy" id="show_busy"
+                   {{event_config.show_busy|e}} /></td>
+        <td>Show as busy during events.</td></tr>
+        <tr id="set_alarms_row"><td class="configinput">
+            <input type="checkbox" name="set_alarms" id="set_alarms"
+                   onchange="updateAlarmInputsHidden()"
+                   {{event_config.set_alarms|e}} /></td>
+        <td>Set alarms. <b>Note:</b> many calendar programs will ignore alarms
+        from imported calendars. Set the default alarm policy in your calendar
+        program before importing.</td></tr>
+        <tr id="alarm_before_secs_row"><td class="configinput">
+            <input type="text" name="alarm_before_secs"
+                   id="alarm_before_secs"
+                   value="{{event_config.alarm_before_secs|e}}" /></td>
+        <td>Number of seconds before the event to alarm.</td></tr>
+        <tr id="alarms_repeat_row"><td class="configinput">
+            <input type="checkbox" name="alarms_repeat" id="alarms_repeat"
+                   onchange="updateAlarmInputsHidden()"
+                   {{event_config.alarms_repeat|e}} /></td>
+        <td>Alarms repeat. <b>Note:</b> most calendar programs won't repeat alarms.</td></tr>
+        <tr id="alarm_repetitions_row"><td class="configinput">
+            <input type="text" name="alarm_repetitions"
+                   id="alarm_repetitions"
+                   value="{{event_config.alarm_repetitions|e}}" /></td>
+        <td>If alarms repeat, number of repetitions.</td></tr>
+        <tr id="alarm_repetition_delay_row">
+          <td class="configinput">
+            <input type="text" name="alarm_repetition_delay_secs"
+                   id="alarm_repetition_delay_secs"
+                   value="{{event_config.alarm_repetition_delay_secs|e}}" /></td>
+          <td>If alarms repeat, number of seconds between each repetition.
+        </td></tr>
+      </table>
+      <br />
 
-    <input id="num_events" type="hidden" value="0" />
-    <table id="events">
-      <tr><th>Event</th><th>Period (HH:MM)</th></tr>
-    </table>
+      <input id="num_events" type="hidden" value="{{num_events|e}}" />
+      <input id="bad_fields" type="hidden" value="{{bad_fields}}" />
+      <table id="events">
+        <tr><th>Event</th><th>Period (HH:MM)</th></tr>
+      </table>
 
-    <input type="button" value="Add Event" onclick="addEvent()" />
-    <input type="submit" value="Create Schedule" />
-  </form>
-</body>
+      <input type="button" value="Add Event" onclick="addEvent()" />
+      <input type="submit" value="Create Schedule" />
+    </form>
+    <br />
+    <div class="error">
+      <!-- TODO: render {{error_messages}} list template param.
+           TODO: In JS, parse CSV value of bad_fields to get input names.
+      -->
+
+    </div>
+  </body>
 </html>

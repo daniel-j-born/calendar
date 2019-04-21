@@ -14,6 +14,7 @@ applications like Google Calendar.
 * Python modules
   - icalendar
   - flask
+  - wtforms
 
 # Installation
 

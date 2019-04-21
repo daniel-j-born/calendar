@@ -93,8 +93,8 @@ class ScheduleBuilder(object):
     self.merge_overlap = True
     self.set_alarms = True
     self.alarms_repeat = True
-    self.alarm_repititions = 60
-    self.alarm_repitition_delay = datetime.timedelta(seconds=5)
+    self.alarm_repetitions = 60
+    self.alarm_repetition_delay = datetime.timedelta(seconds=5)
     # Note: change to negative value in iCalendar objects.
     self.alarm_before = datetime.timedelta(seconds=60)
     self.show_busy = False
@@ -145,8 +145,8 @@ class ScheduleBuilder(object):
     if self.set_alarms:
       al = ev.AddDisplayAlarm(summary, -self.alarm_before)
       if self.alarms_repeat:
-        al.add('duration', self.alarm_repitition_delay)
-        al.add('repeat', self.alarm_repititions)
+        al.add('duration', self.alarm_repetition_delay)
+        al.add('repeat', self.alarm_repetitions)
     return ev
 
 
