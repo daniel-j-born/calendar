@@ -39,6 +39,9 @@ class HostUidGen(object):
 
 
 class StaticVersions(object):
+  """Generate URLs for static content. The contents of files are hashed and this
+  hash is included in a version query parameter. This is so browsers will reload
+  changed files."""
   def __init__(self, dirname, basenames):
     self._dirname = dirname
     self._version = {}
