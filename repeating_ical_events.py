@@ -116,6 +116,8 @@ class ScheduleBuilder(object):
     events = {}
     cal = CalendarBuilder(uid_gen)
     for summary, period in self._repeating_events:
+      if period <= datetime.timedelta(0):
+        continue
       next_event_time = self.start_time
       while next_event_time <= self.end_time:
         next_event_time_events = events.setdefault(next_event_time, [])
