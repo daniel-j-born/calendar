@@ -39,12 +39,12 @@ class HostUidGen(object):
 
 
 class StaticVersions(object):
-  def __init__(dirname, basenames):
+  def __init__(self, dirname, basenames):
     self._dirname = dirname
     self._version = {}
     for basename in basenames:
       with open(os.path.join(dirname, basename), 'rb') as fh:
-        self._version[basename] = hashlib.sha256(fh.read()).hexdigest()
+        self._version[basename] = hashlib.sha256(fh.read()).hexdigest()[:20]
 
   def UrlFor(self, basename):
     if basename in self._version:
@@ -290,7 +290,6 @@ class RequestHandler(object):
 
   def _IndexParams(self, form):
     return {
-      'form_action': flask.url_for(self._req.path),  #TODO: testing url_for
       'forms_js': self._static_versions.UrlFor('repeating_ical_forms.js'),
       'css_url': self._static_versions.UrlFor('style.css'),
       'form': form,

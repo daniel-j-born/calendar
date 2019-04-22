@@ -9,7 +9,7 @@
   <body  onload="formsOnload()">
     <h1 class="section">Repeating Events Scheduler</h1>
 
-    <form method="post" action="{{form_action}}">
+    <form method="post" action="{{url_for('RepeatingEvents')}}">
       <table>
         {% for field in form if field != form.events %}
         <tr id="{{field.id}}_row"><td class="configinput">{{ field }}</td>

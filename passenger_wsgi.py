@@ -24,7 +24,8 @@ application = flask.Flask(__name__)
 
 @application.route('/', methods=['GET', 'POST'])
 @application.route(INSTALL_PATH, methods=['GET', 'POST'])
-def RepeatingIcalEvents():
+def RepeatingEvents():
+  """Used as main entry point via url_for(<method_name>) in templates."""
   flask.request.path = INSTALL_PATH
   handler = repeating_ical_events_http.RequestHandler(
     uid_gens, static_versions, application, flask.request)
