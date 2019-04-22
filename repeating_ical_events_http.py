@@ -44,7 +44,7 @@ class StaticVersions(object):
     self._version = {}
     for basename in basenames:
       with open(os.path.join(dirname, basename), 'rb') as fh:
-        self._version[basename] = hashlib.sha256(fh.read()).hexdigest()[:20]
+        self._version[basename] = hashlib.sha256(fh.read()).hexdigest()[:32]
 
   def UrlFor(self, basename):
     if basename in self._version:
