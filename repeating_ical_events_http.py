@@ -1,13 +1,11 @@
 # Python module to handle flask based requests for repeating_ical_events.
-#
-# TODO: rename module
 
-import collections
 import datetime
 import flask
+import hashlib
+import os
 import re
 import repeating_ical_events
-import sys
 import threading
 import traceback
 import wtforms
@@ -38,6 +36,21 @@ class HostUidGen(object):
         uid_gen = repeating_ical_events.UidGenerator(host)
         self._uid_gens[host] = uid_gen
         return uid_gen
+
+
+class StaticVersions(object):
+  def __init__(dirname, basenames):
+    self._dirname = dirname
+    self._version = {}
+    for basename in basenames:
+      with open(os.path.join(dirname, basename), 'rb') as fh:
+        self._version[basename] = hashlib.sha256(fh.read()).hexdigest()
+
+  def UrlFor(self, basename):
+    if basename in self._version:
+      return flask.url_for(self._dirname, filename=basename,
+                           version=self._version[basename])
+    return flask.url_for(self._dirname, filename=basename)
 
 
 def FieldSetError(field, msg):
@@ -135,11 +148,11 @@ def FilterSummary(data):
 class EventForm(wtforms.Form):
   summary = StringField(
     'Event Name',
-    [validators.InputRequired(), validators.Length(min=1, max=100)
+    [validators.InputRequired(), validators.Length(min=1, max=100),
      validators.Regexp(_summary_chars)],
     default='Event', filters=(FilterSummary,))
   period = EventPeriodField(
-    'Event Period (HH:MM)', [validators.InputRequired()], default='HH:MM')
+    'Event Period (HH:MM)', [validators.InputRequired()])
 
 
 # Default values for unfilled form fields.
@@ -150,26 +163,26 @@ class ScheduleForm(wtforms.Form):
   # Default start_time and end_time are set to the user's local time using
   # Javascript. default= here is in case JS fails.
   start_time = DateTimeField(
-    'Start Time (YYYY/MM/DD HH:MM)', [validators.InputRequired()],
-    default='YYYY/MM/DD HH:MM')
+    'Start Time (YYYY/MM/DD HH:MM)', [validators.InputRequired()])
   end_time = DateTimeField(
-    'End Time (YYYY/MM/DD HH:MM)', [validators.InputRequired()],
-    default='YYYY/MM/DD HH:MM')
+    'End Time (YYYY/MM/DD HH:MM)', [validators.InputRequired()])
   merge_overlapping = BooleanField(
     'If two events occur at the same time, merge them into a single event',
     default=_d.merge_overlap)
   event_duration_secs = SecondsField(
-    'Duration of each event in seconds' [validators.InputRequired()],
+    'Duration of each event in seconds', [validators.InputRequired()],
     default=_d.event_duration)
   show_busy = BooleanField('Show as busy during events', default=_d.show_busy)
   set_alarms = BooleanField( """Set alarms. <b>Note:</b> many calendar programs
   will ignore alarms from imported calendars. Set the default alarm policy in
-  your calendar program before importing.""", default=_d.set_alarms)
+  your calendar program before importing.""", default=_d.set_alarms,
+  render_kw={'onchange': 'updateAlarmInputsHidden()'})
   alarm_before_secs = SecondsField(
     'Number of seconds before the event to alarm', [validators.InputRequired()],
     default=_d.alarm_before)
   alarms_repeat = BooleanField("""Alarms repeat. <b>Note:</b> most calendar
-  programs won't repeat alarms""", default=_d.alarms_repeat)
+  programs won't repeat alarms""", default=_d.alarms_repeat,
+  render_kw={'onchange': 'updateAlarmInputsHidden()'})
   alarm_repetitions = IntegerField(
     'If alarms repeat, number of repetitions', [validators.InputRequired()],
     default=_d.alarm_repetitions)
@@ -184,7 +197,14 @@ class ScheduleForm(wtforms.Form):
                        min_entries=1, max_entries=100)
 
   def validate(self):
-    form_valid = super().validate()
+    """Override validate() to only validate fields that are used."""
+    form_valid = True
+    # Always validate:
+    for field in (self.start_time, self.end_time, self.merge_overlapping,
+                    self.event_duration_secs, self.show_busy, self.set_alarms,
+                    self.events):
+      if not field.validate(self):
+        form_valid = False
     total_period = None
     if self.start_time.data is not None and self.end_time.data is not None:
       total_period = self.end_time.data - self.start_time.data
@@ -193,46 +213,56 @@ class ScheduleForm(wtforms.Form):
         form_valid = False
         self.start_time.data = None
         self.end_time.data = None
-        total_period = None
-        #TODO: append to start_time.errors as well? test this
         self.end_time.errors.append(
           'invalid period between start and end times: %s' % total_period)
-    if (self.alarm_repetition_delay_secs.data is not None and
-        self.alarm_repetitions.data is not None):
-      rep_period = (self.alarm_repetition_delay_secs.data *
-                      self.alarm_repetitions.data)
-      if rep_period > datetime.timedelta(hours=24):
-        form_valid = False
-        self.alarm_repetition_delay_secs.data = None
-        self.alarm_repetitions.data = None
-        self.alarm_repetition_delay_secs.errors.append(
-          'invalid alarm repetition duration %s' % rep_period)
-    if total_period is None:
-      return form_valid
-    # Validate event periods.
-    for event in self.events:
-      if event.period.data is None:
-        continue
-      if event.period.data <= datetime.timedelta(0):
-        num_reps = 0
       else:
-        num_reps = int(total_period / event.period.data)
-      if num_reps < 1 or num_reps > 1000:
-        form_valid = False
-        event.period.data = None
-        if event.summary.data:
-          summary = event.summary.data
-        else:
-          summary = 'event'
-        event.period.errors.append(
-          'invalid number of repetitions for %s: %d' % (summary, num_reps))
+        # Valid total_period. Validate numbers of event repetitions.
+        for event in self.events:
+          if event.period.data is None:
+            continue
+          if event.period.data <= datetime.timedelta(0):
+            num_reps = 0
+          else:
+            num_reps = int(total_period / event.period.data)
+          if num_reps < 1 or num_reps > 1000:
+            form_valid = False
+            event.period.data = None
+            if event.summary.data:
+              summary = event.summary.data
+            else:
+              summary = 'event'
+            event.period.errors.append(
+              'invalid number of repetitions for %s: %d' % (summary, num_reps))
+    if self.set_alarms.data:
+      # If alarms are enabled, validate additional required fields.
+      for field in (self.alarm_before_secs, self.alarms_repeat,
+                      self.alarm_repetitions, self.alarm_repetition_delay_secs):
+        if not field.validate(self):
+          form_valid = False
+      if self.alarms_repeat.data:
+        # If alarm repeats are enabled, validate additional.
+        for field in (self.alarm_repetition_delay_secs,
+                        self.alarm_repetitions):
+          if not field.validate(self):
+            form_valid = False
+        if (self.alarm_repetition_delay_secs.data is not None and
+            self.alarm_repetitions.data is not None):
+          rep_period = (self.alarm_repetition_delay_secs.data *
+                          self.alarm_repetitions.data)
+          if rep_period > datetime.timedelta(hours=24):
+            form_valid = False
+            self.alarm_repetition_delay_secs.data = None
+            self.alarm_repetitions.data = None
+            self.alarm_repetition_delay_secs.errors.append(
+              'invalid alarm repetition duration %s' % rep_period)
     return form_valid
 
 
 class RequestHandler(object):
-  def __init__(self, uid_gens, flask_app, req):
+  def __init__(self, uid_gens, static_versions, flask_app, req):
     """Give HostUidGen instance and flask.request."""
     self._uid_gens = uid_gens
+    self._static_versions = static_versions
     self._flask_app = flask_app
     self._req = req
 
@@ -249,7 +279,7 @@ class RequestHandler(object):
       return flask.make_response(
         flask.render_template(
           'error.html',
-          css_url=flask.url_for('static', filename='style.css'),
+          css_url=self._static_versions.UrlFor('style.css'),
           title='Internal Server Error',
           error_message='Internal Server Error'), 500)
 
@@ -260,9 +290,9 @@ class RequestHandler(object):
 
   def _IndexParams(self, form):
     return {
-      'form_action': self._req.path,
-      'forms_js': flask.url_for('static', filename='repeating_ical_forms.js'),
-      'css_url': flask.url_for('static', filename='style.css'),
+      'form_action': flask.url_for(self._req.path),  #TODO: testing url_for
+      'forms_js': self._static_versions.UrlFor('repeating_ical_forms.js'),
+      'css_url': self._static_versions.UrlFor('style.css'),
       'form': form,
     }
 
@@ -270,12 +300,25 @@ class RequestHandler(object):
     return flask.render_template(
       'index.html', **self._IndexParams(ScheduleForm()))
 
+  def _SetConfig(self, sched, form):
+    """Set configuration data in sched from data in form.
+    form should be validated."""
+    sched.merge_overlap          = form.merge_overlapping.data
+    sched.set_alarms             = form.set_alarms.data
+    sched.alarms_repeat          = form.alarms_repeat.data
+    sched.alarm_repetitions      = form.alarm_repetitions.data
+    sched.alarm_repetition_delay = form.alarm_repetition_delay_secs.data
+    sched.alarm_before           = form.alarm_before_secs.data
+    sched.show_busy              = sched.show_busy.data
+    sched.event_duration         = sched.event_duration_secs.data
+
   def _CalendarDownload(self):
     form = ScheduleForm(self._req.form)
     if not form.validate():
       return self._ErrorPage(form)
     sched = repeating_ical_events.ScheduleBuilder(
       form.start_time.data, form.end_time.data)
+    self._SetConfig(sched, form)
     for event in form.events:
       sched.AddRepeatingEvent(event.summary.data, event.period.data)
     cal = sched.BuildCalendar(self._uid_gens.UidGen(self._req))

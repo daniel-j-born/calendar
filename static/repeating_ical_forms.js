@@ -1,34 +1,77 @@
 function addEvent() {
-    var num_events = document.getElementById("num_events");
-    var container = document.getElementById("events");
-    ++num_events.value;
+    // We create new input elements with ids of the form:
+    //   "events-0-summary", "events-0-period"
+    // The row containing them has an id of the form:
+    //   "events-0-row"
+    // The server will generate "-errors-row" rows, but client side JS
+    // doesn't create these error rows.
+    var events_table = document.getElementById("events_table");
+    if (events_table == null) {
+        return;
+    }
+    // Either a "-row" or "-errors-row". Parse the "events-<int>" basename to
+    // get the next available event ID.
+    var next_event_num = 0;
+    if (events_table.lastElementChild != null &&
+        events_table.lastElementChild.id != null) {
+        var last_row_id = events_table.lastElementChild.id;
+        var tmp = last_row_id.replace(/^events-/, "");
+        if (tmp != last_row_id) {
+            tmp = /^\d+/.exec(tmp);
+            if (tmp != null) {
+                next_event_num = parseInt(tmp) + 1;
+            }
+        }
+    }
+    var baseid = "events-" + next_event_num;
     var tr = document.createElement("tr");
-
+    tr.id = baseid + "-row";
     var summary_td = document.createElement("td");
     summary_td.className = "eventsummary";
     var summary_input = document.createElement("input");
-    summary_input.name = "summary_" + (num_events.value - 1);
+    summary_input.id = baseid + "-summary";
+    summary_input.name = summary_input.id;
+    summary_input.required = true;
     summary_input.type = "text";
-    summary_input.value = "Event " + num_events.value;
+    summary_input.value = "Event";
     summary_td.appendChild(summary_input);
     tr.appendChild(summary_td);
 
     var period_td = document.createElement("td");
     var period_input = document.createElement("input");
-    period_input.name = "period_" + (num_events.value - 1);
+    period_input.id = baseid + "-period";
+    period_input.name = period_input.id;
+    period_input.required = true;
     period_input.type = "text";
-    period_input.value = "HH:MM";
     period_td.appendChild(period_input);
 
     var delete_button = document.createElement("input");
+    delete_button.id = baseid + "-delete";
+    delete_button.name = delete_button.id;
     delete_button.type = "button";
-    delete_button.name = "delete_" + (num_events.value - 1);
-    delete_button.id = "delete_" + (num_events.value - 1);
     delete_button.value = "Delete Event";
-    delete_button.onclick = function() { container.removeChild(tr); };
+    delete_button.onclick = function() { events_table.removeChild(tr); };
     period_td.appendChild(delete_button);
     tr.appendChild(period_td);
-    container.appendChild(tr);
+    events_table.appendChild(tr);
+}
+
+// Delete event rows created by the server.
+function deleteEvent(baseid) {
+    var events_table = document.getElementById("events_table");
+    if (events_table == null) {
+        return;
+    }
+    var input_row_id = baseid + "-row";
+    var input_row = document.getElementById(input_row_id);
+    if (input_row != null) {
+        events_table.removeChild(input_row);
+    }
+    var error_row_id = baseid + "-errors-row";
+    var error_row = document.getElementById(error_row_id);
+    if (error_row != null) {
+        events_table.removeChild(error_row);
+    }
 }
 
 function setDefaultStartEndTimes() {
@@ -62,28 +105,28 @@ function formsOnload() {
 
     // Process default states of alarm settings.
     updateAlarmInputsHidden();
-
-    var num_events = document.getElementById("num_events");
-    if (num_events.value == 0) {
-        // Add first event.
-        addEvent();
-    }
 }
 
 function updateAlarmInputsHidden() {
     // Element ids of rows shown if set_alarms is checked.
+    var set_alarms_input_id = "set_alarms";
     var alarm_row_ids = ["alarm_before_secs_row", "alarms_repeat_row"];
     // Element ids of rows shown if set_alarms and alarms_repeat are checked.
+    var alarms_repeat_input_id = "alarms_repeat";
     var alarms_repeat_row_ids = ["alarm_repetitions_row",
-                                 "alarm_repetition_delay_row"];
+                                 "alarm_repetition_delay_secs_row"];
     var i;
-    var set_alarms = document.getElementById("set_alarms");
-    for (i = 0; i < alarm_row_ids.length; i++) {
-        document.getElementById(alarm_row_ids[i]).hidden = !set_alarms.checked;
+    var set_alarms = document.getElementById(set_alarms_input_id);
+    if (set_alarms) {
+        for (i = 0; i < alarm_row_ids.length; i++) {
+            document.getElementById(alarm_row_ids[i]).hidden = !set_alarms.checked;
+        }
     }
-    var alarms_repeat = document.getElementById("alarms_repeat");
-    for (i = 0; i < alarms_repeat_row_ids.length; i++) {
-        document.getElementById(alarms_repeat_row_ids[i]).hidden =
-            !set_alarms.checked || !alarms_repeat.checked
+    var alarms_repeat = document.getElementById(alarms_repeat_input_id);
+    if (set_alarms && alarms_repeat) {
+        for (i = 0; i < alarms_repeat_row_ids.length; i++) {
+            document.getElementById(alarms_repeat_row_ids[i]).hidden =
+                !set_alarms.checked || !alarms_repeat.checked
+        }
     }
 }

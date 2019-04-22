@@ -1,86 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="stylesheet" href="{{css_url|e}}" type="text/css" />
-    <script src="{{forms_js|e}}" type="text/javascript">
+    <link rel="stylesheet" href="{{css_url}}" type="text/css" />
+    <script src="{{forms_js}}" type="text/javascript">
     </script>
     <title>Repeating Events Scheduler</title>
   </head>
   <body  onload="formsOnload()">
     <h1 class="section">Repeating Events Scheduler</h1>
 
-    <form method="post" action="{{form_action|e}}">
+    <form method="post" action="{{form_action}}">
       <table>
-        <tr><td class="configinput">
-            <input type="text" name="start_time" id="start_time"
-                   value="{{event_config.start_time|e}}" /></td>
-          <td>Start Time (YYYY/MM/DD HH:MM)</td></tr>
-        <tr><td class="configinput">
-            <input type="text" name="end_time" id="end_time"
-                   value="{{event_config.end_time|e}}" /></td>
-        <td>End Time (YYYY/MM/DD HH:MM)</td></tr>
-        <tr><td class="configinput">
-            <input type="checkbox" name="merge_overlapping"
-                   id="merge_overlapping"
-                   {{event_config.merge_overlapping|e}} /></td>
-        <td>If two events occur at the same time, merge them into a single
-            event.</td></tr>
-        <tr><td class="configinput">
-            <input type="text" name="event_duration_secs"
-                   id="event_duration_secs"
-                   value="{{event_config.event_duration_secs|e}}" /></td>
-        <td>Duration of each event.</td></tr>
-        <tr><td class="configinput">
-            <input type="checkbox" name="show_busy" id="show_busy"
-                   {{event_config.show_busy|e}} /></td>
-        <td>Show as busy during events.</td></tr>
-        <tr id="set_alarms_row"><td class="configinput">
-            <input type="checkbox" name="set_alarms" id="set_alarms"
-                   onchange="updateAlarmInputsHidden()"
-                   {{event_config.set_alarms|e}} /></td>
-        <td>Set alarms. <b>Note:</b> many calendar programs will ignore alarms
-        from imported calendars. Set the default alarm policy in your calendar
-        program before importing.</td></tr>
-        <tr id="alarm_before_secs_row"><td class="configinput">
-            <input type="text" name="alarm_before_secs"
-                   id="alarm_before_secs"
-                   value="{{event_config.alarm_before_secs|e}}" /></td>
-        <td>Number of seconds before the event to alarm.</td></tr>
-        <tr id="alarms_repeat_row"><td class="configinput">
-            <input type="checkbox" name="alarms_repeat" id="alarms_repeat"
-                   onchange="updateAlarmInputsHidden()"
-                   {{event_config.alarms_repeat|e}} /></td>
-        <td>Alarms repeat. <b>Note:</b> most calendar programs won't repeat alarms.</td></tr>
-        <tr id="alarm_repetitions_row"><td class="configinput">
-            <input type="text" name="alarm_repetitions"
-                   id="alarm_repetitions"
-                   value="{{event_config.alarm_repetitions|e}}" /></td>
-        <td>If alarms repeat, number of repetitions.</td></tr>
-        <tr id="alarm_repetition_delay_row">
-          <td class="configinput">
-            <input type="text" name="alarm_repetition_delay_secs"
-                   id="alarm_repetition_delay_secs"
-                   value="{{event_config.alarm_repetition_delay_secs|e}}" /></td>
-          <td>If alarms repeat, number of seconds between each repetition.
-        </td></tr>
+        {% for field in form if field != form.events %}
+        <tr id="{{field.id}}_row"><td class="configinput">{{ field }}</td>
+          {% if field.errors %}
+          <td class="form_errors">  <!-- TODO: define .form_errors -->
+            {{ field.label }}
+            <ul>
+            {% for error in field.errors %}<li>{{ error|e }}</i>{% endfor %}
+            </ul>
+          {% else %}
+          <td>
+            {{ field.label }}
+          {% endif %}
+          </td></tr>
+        {% endfor %}
       </table>
       <br />
-
-      <input id="num_events" type="hidden" value="{{num_events|e}}" />
-      <input id="bad_fields" type="hidden" value="{{bad_fields}}" />
-      <table id="events">
+      <table id="events_table">
         <tr><th>Event</th><th>Period (HH:MM)</th></tr>
+        {% for event in form.events %}
+        <tr id="{{event.id}}-row"><td class="eventsummary">{{ event.summary }}</td>
+          <td>{{ event.period }}
+            <input type="button" name="{{event.id}}-delete" id="{{event.id}}-delete"
+                   value="Delete Event" onclick="deleteEvent('{{event.id}}')" /></td></tr>
+        {% if event.summary.errors or event.period.errors %}
+        <tr id="{{event.id}}-errors-row"><td colspan="2">
+        <ul class="form_errors">
+          {% for error in event.summary.errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+          {% for error in event.period.errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+        </td></tr>
+        {% endif %}
+        {% endfor %}
       </table>
-
       <input type="button" value="Add Event" onclick="addEvent()" />
       <input type="submit" value="Create Schedule" />
     </form>
-    <br />
-    <div class="error">
-      <!-- TODO: render {{error_messages}} list template param.
-           TODO: In JS, parse CSV value of bad_fields to get input names.
-      -->
-
-    </div>
   </body>
 </html>
