@@ -5,7 +5,7 @@ function addEvent() {
     //   "events-0-row"
     // The server will generate "-errors-row" rows, but client side JS
     // doesn't create these error rows.
-    var events_table = document.getElementById("events_table");
+    var events_table = document.getElementById("events_table_body");
     if (events_table == null) {
         return;
     }
@@ -43,6 +43,7 @@ function addEvent() {
     period_input.name = period_input.id;
     period_input.required = true;
     period_input.type = "text";
+    period_input.value = "";
     period_td.appendChild(period_input);
 
     var delete_button = document.createElement("input");
@@ -58,7 +59,7 @@ function addEvent() {
 
 // Delete event rows created by the server.
 function deleteEvent(baseid) {
-    var events_table = document.getElementById("events_table");
+    var events_table = document.getElementById("events_table_body");
     if (events_table == null) {
         return;
     }
@@ -105,6 +106,12 @@ function formsOnload() {
 
     // Process default states of alarm settings.
     updateAlarmInputsHidden();
+
+    // Add an event row if there are none.
+    var events_table = document.getElementById("events_table_body");
+    if (events_table != null && events_table.children.length == 0) {
+        addEvent();
+    }
 }
 
 function updateAlarmInputsHidden() {

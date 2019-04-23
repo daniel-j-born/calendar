@@ -17,8 +17,7 @@ uid_gens = repeating_ical_events_http.HostUidGen()
 
 # Load version of static files once on startup. Requires restart to detect
 # changes.
-static_versions = repeating_ical_events_http.StaticVersions(
-  'static', ['style.css', 'repeating_ical_forms.js'])
+static_versions = repeating_ical_events_http.StaticVersions('static')
 
 application = flask.Flask(__name__)
 

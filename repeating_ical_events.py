@@ -9,6 +9,8 @@ import threading
 
 
 class UidGenerator(object):
+  """Generate globally unique identifiers for icalendar UID fields.
+  Thread-safe."""
   def __init__(self, base_domain):
     self._base_domain = base_domain
     self._domain = ''.join([random.choice(string.ascii_letters + string.digits)

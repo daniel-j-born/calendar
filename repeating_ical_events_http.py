@@ -17,14 +17,15 @@ from wtforms.ext.dateutil.fields import DateTimeField
 
 class HostUidGen(object):
   """Get a repeating_ical_events.UidGenerator for the server hostname
-  for a given request."""
+  for a given request. Thread-safe."""
   def __init__(self):
     # Hostname mapped to UidGenerator.
     self._uid_gens = {}
     self._uid_gens_lock = threading.Lock()
     
   def UidGen(self, request=None):
-    """Return UidGenerator for the server host. Give flask.request, if available."""
+    """Return UidGenerator for the server host. Give flask.request,
+    if available."""
     try:
       host = request.host.split(':')[0]
     except AttributeError:
@@ -40,20 +41,71 @@ class HostUidGen(object):
 
 class StaticVersions(object):
   """Generate URLs for static content. The contents of files are hashed and this
-  hash is included in a version query parameter. This is so browsers will reload
-  changed files."""
-  def __init__(self, dirname, basenames):
+  hash is included in a version query parameter so browsers will reload
+  changed files. Thread-safe."""
+
+  class FileInfo(object):
+    def __init__(self, mtime, digest):
+      self.mtime = mtime
+      self.digest = digest
+
+    def Set(self, mtime, digest):
+      self.mtime = mtime
+      self.digest = digest
+
+  def __init__(self, dirname, reload_when_mtime_changes=True):
+    """:param dirname: Name of directory that contains static files."""
     self._dirname = dirname
-    self._version = {}
-    for basename in basenames:
-      with open(os.path.join(dirname, basename), 'rb') as fh:
-        self._version[basename] = hashlib.sha256(fh.read()).hexdigest()[:32]
+    self._reload_when_mtime_changes = reload_when_mtime_changes
+    # Map basename to FileInfo instance.
+    self._fi = {}
+    self._lock = threading.Lock()
+
+  def _PathFor(self, basename):
+    return os.path.join(self._dirname, basename)
+
+  def _UpdateDigest(self, basename, path, mtime):
+    """Update the cached entry for basename and return the digest."""
+    digest = None
+    with open(path, 'rb') as fh:
+      digest = hashlib.sha256(fh.read()).hexdigest()[:32]
+    with self._lock:
+      self._fi[basename].Set(mtime, digest)
+    return digest
+
+  def _NewDigest(self, basename):
+    mtime = None
+    digest = None
+    path = self._PathFor(basename)
+    with open(path, 'rb') as fh:
+      mtime = os.fstat(fh.fileno()).st_mtime
+      digest = hashlib.sha256(fh.read()).hexdigest()[:32]
+    with self._lock:
+      self._fi[basename] = FileInfo(mtime, digest)
+    return digest
+
+  def _NewDigest(self, basename):
+    pass
 
   def UrlFor(self, basename):
-    if basename in self._version:
-      return flask.url_for(self._dirname, filename=basename,
-                           version=self._version[basename])
-    return flask.url_for(self._dirname, filename=basename)
+    mtime = None
+    digest = None
+    with self._lock:
+      fi = self._fi.get(basename, None)
+      if fi:
+        mtime = fi.mtime
+        digest = fi.digest
+    if digest:
+      if not self._reload_when_mtime_changes:
+        return flask.url_for(self._dirname, filename=basename, version=digest)
+      path = self._PathFor(basename)
+      latest_mtime = os.stat(path).st_mtime
+      if latest_mtime == mtime:
+        return flask.url_for(self._dirname, filename=basename, version=digest)
+      digest = self._UpdateDigest(basename, path, latest_mtime)
+    else:
+      digest = self._NewDigest(basename)
+    return flask.url_for(self._dirname, filename=basename, version=digest)
 
 
 def FieldSetError(field, msg):
