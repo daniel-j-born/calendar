@@ -1,3 +1,8 @@
+var events_table_body_id = "events_table_body";
+
+// These are set by formsOnload(), which should be call on page load.
+var summary_ph, period_ph, delete_val;
+
 function addEvent() {
     // We create new input elements with ids of the form:
     //   "events-0-summary", "events-0-period"
@@ -5,7 +10,7 @@ function addEvent() {
     //   "events-0-row"
     // The server will generate "-errors-row" rows, but client side JS
     // doesn't create these error rows.
-    var events_table = document.getElementById("events_table_body");
+    var events_table = document.getElementById(events_table_body_id);
     if (events_table == null) {
         return;
     }
@@ -33,7 +38,7 @@ function addEvent() {
     summary_input.name = summary_input.id;
     summary_input.required = true;
     summary_input.type = "text";
-    summary_input.value = "Event";
+    summary_input.placeholder = summary_ph;
     summary_td.appendChild(summary_input);
     tr.appendChild(summary_td);
 
@@ -44,13 +49,14 @@ function addEvent() {
     period_input.required = true;
     period_input.type = "text";
     period_input.value = "";
+    period_input.placeholder = period_ph;
     period_td.appendChild(period_input);
 
     var delete_button = document.createElement("input");
     delete_button.id = baseid + "-delete";
     delete_button.name = delete_button.id;
     delete_button.type = "button";
-    delete_button.value = "Delete Event";
+    delete_button.value = delete_val || "Delete";
     delete_button.onclick = function() { events_table.removeChild(tr); };
     period_td.appendChild(delete_button);
     tr.appendChild(period_td);
@@ -59,7 +65,7 @@ function addEvent() {
 
 // Delete event rows created by the server.
 function deleteEvent(baseid) {
-    var events_table = document.getElementById("events_table_body");
+    var events_table = document.getElementById(events_table_body_id);
     if (events_table == null) {
         return;
     }
@@ -101,14 +107,18 @@ function setDefaultStartEndTimes() {
     end_time.value = now_str;
 }
 
-function formsOnload() {
+function formsOnload(summary_ph_in, period_ph_in, delete_val_in) {
+    summary_ph = summary_ph_in;
+    period_ph = period_ph_in;
+    delete_val = delete_val_in;
+
     setDefaultStartEndTimes();
 
     // Process default states of alarm settings.
     updateAlarmInputsHidden();
 
     // Add an event row if there are none.
-    var events_table = document.getElementById("events_table_body");
+    var events_table = document.getElementById(events_table_body_id);
     if (events_table != null && events_table.children.length == 0) {
         addEvent();
     }

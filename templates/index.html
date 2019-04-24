@@ -6,20 +6,17 @@
     </script>
     <title>Repeating Events Scheduler</title>
   </head>
-  <body  onload="formsOnload()">
+  <body  onload="formsOnload('{{summary_ph_in}}', '{{period_ph_in}}', '{{delete_val_in}}')">
     <h1 class="section">Repeating Events Scheduler</h1>
-
     <form method="post" action="{{url_for('RepeatingEvents')}}">
       <table>
         {% for field in form if field != form.events %}
-        <tr id="{{field.id}}_row"><td class="configinput">{{ field }}</td>
+        <tr id="{{field.id}}_row"><td class="configinput">{{field}}</td>
           {% if field.errors %}
-          <td>
+          <td class="configlabel">
             <span class="error">
             {{ field.label }}
-            <ul>  <!-- TODO: only create ul if len(errors) > 1 -->
-            {% for error in field.errors %}<li>{{ error|e }}</i>{% endfor %}
-            </ul>
+            {% for error in field.errors %}<br />{{ error|e }}{% endfor %}
             </span>
           </td>
           {% else %}
@@ -30,21 +27,21 @@
       </table>
       <br />
       <table id="events_table">
-        <thead><tr><th>Event</th><th>Period (HH:MM)</th></tr></thead>
+        <thead><tr><th>Event</th><th>Period</th></tr></thead>
         <tbody id="events_table_body">
         {% for event in form.events %}
         <tr id="{{event.id}}-row"><td class="eventsummary">{{event.summary}}</td>
-          <td>{{event.period}}<input type="button" name="{{event.id}}-delete" id="{{event.id}}-delete" value="Delete Event" onclick="deleteEvent('{{event.id}}')" /></td></tr>
+          <td class="eventperiod">{{event.period}}<input type="button" name="{{event.id}}-delete" id="{{event.id}}-delete" value="{{delete_val_in}}" onclick="deleteEvent('{{event.id}}')" /></td></tr>
         {% if event.summary.errors or event.period.errors %}
-        <tr id="{{event.id}}-errors-row"><td colspan="2">
-        <ul class="error">
+        <tr id="{{event.id}}-errors-row"><td colspan="2" class="eventerror">
+        <span class="error">
           {% for error in event.summary.errors %}
-          <li>{{ error }}</li>
+          {{ error|e }}<br />
           {% endfor %}
           {% for error in event.period.errors %}
-          <li>{{ error }}</li>
+          {{ error|e }}<br />
           {% endfor %}
-        </ul>
+        </span>
         </td></tr>
         {% endif %}
         {% endfor %}

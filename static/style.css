@@ -1,6 +1,30 @@
+.error {
+    color: #ff0000;
+    background-color: #cfcac6;
+    display: inline;
+    font-weight: bold;
+    text-align: left;
+    align: left;
+}
+
+.error ul {
+    color: #ff0000;
+    background-color: #cfcac6;
+    font-weight: bold;
+    display: inline;
+}
+
+.error li {
+    color: #ff0000;
+    background-color: #cfcac6;
+    font-weight: bold;
+    display: inline;
+}
+
 .configinput {
     align: right;
     text-align: right;
+    vertical-align: top;
 }
 
 .configinput input {
@@ -8,9 +32,16 @@
     text-align: right;
 }
 
+.configlabel {
+    align: left;
+    text-align: left;
+    vertical-align: top;
+}
+
 .eventsummary {
     align: right;
     text-align: right;
+    vertical-align: top;
 }
 
 .eventsummary input {
@@ -18,13 +49,16 @@
     text-align: right;
 }
 
-.error {
-    color: #ff0000;
-    background-color: #cfcac6;
-    display: inline;
-    font-weight: bold;
+.eventperiod {
+    align: left;
+    text-align: left;
+    vertical-align: top;
 }
 
+.eventerror {
+    align: right;
+    text-align: right;
+}
 
 body {
     background-color: #8a8784;

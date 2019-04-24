@@ -14,12 +14,10 @@ import repeating_ical_events_http
 INSTALL_PATH = '/repeating_events'
 
 uid_gens = repeating_ical_events_http.HostUidGen()
+application = flask.Flask(repeating_ical_events_http.__name__)
 
-# Load version of static files once on startup. Requires restart to detect
-# changes.
-static_versions = repeating_ical_events_http.StaticVersions('static')
-
-application = flask.Flask(__name__)
+# Cache hashes of static content (which must be in './static/' directory).
+static_versions = repeating_ical_events_http.StaticVersions(application)
 
 @application.route('/', methods=['GET', 'POST'])
 @application.route(INSTALL_PATH, methods=['GET', 'POST'])

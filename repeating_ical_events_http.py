@@ -53,22 +53,26 @@ class StaticVersions(object):
       self.mtime = mtime
       self.digest = digest
 
-  def __init__(self, dirname, reload_when_mtime_changes=True):
-    """:param dirname: Name of directory that contains static files."""
-    self._dirname = dirname
+  def __init__(self, app, reload_when_mtime_changes=True):
+    """":param app: Flask app object"""
+    self._app = app
+    self._static = 'static'  # Special endpoint name for flask
     self._reload_when_mtime_changes = reload_when_mtime_changes
     # Map basename to FileInfo instance.
     self._fi = {}
     self._lock = threading.Lock()
 
   def _PathFor(self, basename):
-    return os.path.join(self._dirname, basename)
+    return os.path.join(self._app.static_folder, basename)
+
+  def _ComputeDigest(self, fh):
+    return hashlib.sha256(fh.read()).hexdigest()[:32]
 
   def _UpdateDigest(self, basename, path, mtime):
     """Update the cached entry for basename and return the digest."""
     digest = None
     with open(path, 'rb') as fh:
-      digest = hashlib.sha256(fh.read()).hexdigest()[:32]
+      digest = self._ComputeDigest(fh)
     with self._lock:
       self._fi[basename].Set(mtime, digest)
     return digest
@@ -79,13 +83,10 @@ class StaticVersions(object):
     path = self._PathFor(basename)
     with open(path, 'rb') as fh:
       mtime = os.fstat(fh.fileno()).st_mtime
-      digest = hashlib.sha256(fh.read()).hexdigest()[:32]
+      digest = self._ComputeDigest(fh)
     with self._lock:
-      self._fi[basename] = FileInfo(mtime, digest)
+      self._fi[basename] = StaticVersions.FileInfo(mtime, digest)
     return digest
-
-  def _NewDigest(self, basename):
-    pass
 
   def UrlFor(self, basename):
     mtime = None
@@ -97,15 +98,16 @@ class StaticVersions(object):
         digest = fi.digest
     if digest:
       if not self._reload_when_mtime_changes:
-        return flask.url_for(self._dirname, filename=basename, version=digest)
+        return flask.url_for(self._static, filename=basename, version=digest)
       path = self._PathFor(basename)
       latest_mtime = os.stat(path).st_mtime
       if latest_mtime == mtime:
-        return flask.url_for(self._dirname, filename=basename, version=digest)
+        return flask.url_for(self._static, filename=basename, version=digest)
       digest = self._UpdateDigest(basename, path, latest_mtime)
     else:
       digest = self._NewDigest(basename)
-    return flask.url_for(self._dirname, filename=basename, version=digest)
+    self._app.logger.info('New digest for static file %s: %s', basename, digest)
+    return flask.url_for(self._static, filename=basename, version=digest)
 
 
 def FieldSetError(field, msg):
@@ -121,8 +123,6 @@ def FieldSetError(field, msg):
 class SecondsField(IntegerField):
   """Sets data to a timedelta. Parses and renders a duration in seconds.
   Required field. Builtin validation."""
-  #def __init__(self, label='', validators=None, **kwargs):
-  #  super().__init__(label=label, validators=validators, **kwargs)
 
   def _value(self):
     """Override _value to render raw_data if validation failed. This allows
@@ -155,6 +155,10 @@ class SecondsField(IntegerField):
 class EventPeriodField(StringField):
   """Encapsulate a timedelta that is parsed and rendered as HH:MM."""
 
+  def __init__(self, label=None, validators=None, *args, **kw_args):
+    super().__init__(label, validators, *args, **kw_args)
+    self._event_wrapper_form = kw_args.get('_form', None)
+
   def _value(self):
     """Return raw_data is data is not set."""
     if type(self.data) == datetime.timedelta:
@@ -167,12 +171,16 @@ class EventPeriodField(StringField):
     return ''
 
   def process_formdata(self, valuelist):
+    if self._event_wrapper_form and self._event_wrapper_form.summary.data:
+      ev_name = self._event_wrapper_form.summary.data
+    else:
+      ev_name = 'Event'
     if not valuelist:
-      return FieldSetError(self, 'missing value')
+      return FieldSetError(self, '%s value is missing' % ev_name)
     s = valuelist[-1]
     m = re.match(r'(\d{0,2}):(\d{0,2})$', s)
-    if not m:
-      return FieldSetError(self, 'bad format (HH:MM)')
+    if not m:        
+      return FieldSetError(self, '%s has bad time period format (HH:MM)' % ev_name)
     if m.group(1):
       hours = int(m.group(1))
     else:
@@ -185,7 +193,7 @@ class EventPeriodField(StringField):
     max_period = datetime.timedelta(days=1)
     d = datetime.timedelta(hours=hours, minutes=minutes)
     if d < min_period or d > max_period:
-      return FieldSetError(self, 'invalid period')
+      return FieldSetError(self, '%s has invalid period' % ev_name)
     self.data = d
 
 
@@ -201,13 +209,21 @@ def FilterSummary(data):
 
 
 class EventForm(wtforms.Form):
+  _summary_ph = 'Your name for this event'
   summary = StringField(
     'Event Name',
     [validators.InputRequired(), validators.Length(min=1, max=100),
      validators.Regexp(_summary_chars)],
-    default='Event', filters=(FilterSummary,))
+    filters=(FilterSummary,),
+    render_kw={'placeholder' : _summary_ph})
+
+  _period_ph = 'HH:MM'
   period = EventPeriodField(
-    'Event Period (HH:MM)', [validators.InputRequired()])
+    'Event Period', [validators.InputRequired()],
+    render_kw={'placeholder' : _period_ph})
+
+  # TODO: Create a Field subclass for input type="button"
+  _delete_val = 'Delete Event'
 
 
 # Default values for unfilled form fields.
@@ -216,11 +232,13 @@ _d = repeating_ical_events.ScheduleBuilder(None, None)
 
 class ScheduleForm(wtforms.Form):
   # Default start_time and end_time are set to the user's local time using
-  # Javascript. default= here is in case JS fails.
+  # Javascript.
   start_time = DateTimeField(
-    'Start Time (YYYY/MM/DD HH:MM)', [validators.InputRequired()])
+    'Start Time', [validators.InputRequired()],
+    render_kw={'placeholder' : 'YYYY/MM/DD HH:MM'})
   end_time = DateTimeField(
-    'End Time (YYYY/MM/DD HH:MM)', [validators.InputRequired()])
+    'End Time', [validators.InputRequired()],
+    render_kw={'placeholder' : 'YYYY/MM/DD HH:MM'})
   merge_overlapping = BooleanField(
     'If two events occur at the same time, merge them into a single event',
     default=_d.merge_overlap)
@@ -228,15 +246,15 @@ class ScheduleForm(wtforms.Form):
     'Duration of each event in seconds', [validators.InputRequired()],
     default=_d.event_duration)
   show_busy = BooleanField('Show as busy during events', default=_d.show_busy)
-  set_alarms = BooleanField( """Set alarms. <b>Note:</b> many calendar programs
+  set_alarms = BooleanField( """Set alarms. <b>Note:</b> <i>many calendar programs
   will ignore alarms from imported calendars. Set the default alarm policy in
-  your calendar program before importing.""", default=_d.set_alarms,
+  your calendar program before importing</i>""", default=_d.set_alarms,
   render_kw={'onchange': 'updateAlarmInputsHidden()'})
   alarm_before_secs = SecondsField(
     'Number of seconds before the event to alarm', [validators.InputRequired()],
     default=_d.alarm_before)
-  alarms_repeat = BooleanField("""Alarms repeat. <b>Note:</b> most calendar
-  programs won't repeat alarms""", default=_d.alarms_repeat,
+  alarms_repeat = BooleanField("""Alarms repeat. <b>Note:</b> <i>most calendar
+  programs won't repeat alarms</i>""", default=_d.alarms_repeat,
   render_kw={'onchange': 'updateAlarmInputsHidden()'})
   alarm_repetitions = IntegerField(
     'If alarms repeat, number of repetitions', [validators.InputRequired()],
@@ -244,11 +262,7 @@ class ScheduleForm(wtforms.Form):
   alarm_repetition_delay_secs = SecondsField(
     'If alarms repeat, number of seconds between each repetition',
     [validators.InputRequired()], default=_d.alarm_repetition_delay)
-  #TODO: In JS, get number of events. Don't use a hidden field. Then create new
-  #ones with the proper names.
-  #num_events = HiddenField()
-  #TODO: test that when JS adds and deletes and leaves holes, this will parse
-  events = FieldList(FormField(EventForm), label='Events to Schedule',
+  events = FieldList(FormField(EventForm), label='',
                        min_entries=1, max_entries=100)
 
   def validate(self):
@@ -313,12 +327,15 @@ class ScheduleForm(wtforms.Form):
     return form_valid
 
 
+del _d  # Defaults needed only for class ScheduleForm definition.
+
+
 class RequestHandler(object):
-  def __init__(self, uid_gens, static_versions, flask_app, req):
+  def __init__(self, uid_gens, static_versions, app, req):
     """Give HostUidGen instance and flask.request."""
     self._uid_gens = uid_gens
     self._static_versions = static_versions
-    self._flask_app = flask_app
+    self._app = app
     self._req = req
 
   def Response(self):
@@ -329,8 +346,7 @@ class RequestHandler(object):
         return self._CalendarForm()
     except:
       # Exceptions. Don't render any user messages.
-      self._flask_app.logger.error('Unexpected exception: %s',
-                                   traceback.format_exc())
+      self._app.logger.error('Unexpected exception: %s', traceback.format_exc())
       return flask.make_response(
         flask.render_template(
           'error.html',
@@ -347,6 +363,9 @@ class RequestHandler(object):
     return {
       'forms_js': self._static_versions.UrlFor('repeating_ical_forms.js'),
       'css_url': self._static_versions.UrlFor('style.css'),
+      'summary_ph_in': EventForm._summary_ph,
+      'period_ph_in': EventForm._period_ph,
+      'delete_val_in' : EventForm._delete_val,
       'form': form,
     }
 
