@@ -1,8 +1,14 @@
 var events_table_body_id = "events_table_body";
 
-// These are set by formsOnload(), which should be call on page load.
+/**
+ * Configuration parameters. These are set by formsOnload(), which should
+ * be called on page load.
+ */
 var summary_ph, period_ph, delete_val;
 
+/**
+ * Add an event to events_table_body_id.
+ */
 function addEvent() {
     // We create new input elements with ids of the form:
     //   "events-0-summary", "events-0-period"
@@ -63,7 +69,12 @@ function addEvent() {
     events_table.appendChild(tr);
 }
 
-// Delete event rows created by the server.
+/**
+ * Delete an event with the given baseid.
+ *
+ * This is for events created in the HTML by the server. Events created by
+ * addEvent() have an onclick lambda for deletion.
+ */
 function deleteEvent(baseid) {
     var events_table = document.getElementById(events_table_body_id);
     if (events_table == null) {
@@ -81,6 +92,10 @@ function deleteEvent(baseid) {
     }
 }
 
+/**
+ * Set the start and end times to the current time. This is generally called
+ * once on page load.
+ */
 function setDefaultStartEndTimes() {
     var start_time = document.getElementById("start_time");
     var end_time = document.getElementById("end_time");
@@ -107,6 +122,11 @@ function setDefaultStartEndTimes() {
     end_time.value = now_str;
 }
 
+/**
+ * Perform initial page setup.
+ *
+ * Generally called from page onload.
+ */
 function formsOnload(summary_ph_in, period_ph_in, delete_val_in) {
     summary_ph = summary_ph_in;
     period_ph = period_ph_in;
@@ -124,6 +144,10 @@ function formsOnload(summary_ph_in, period_ph_in, delete_val_in) {
     }
 }
 
+/**
+ * Control when certain UI elements are hidden or not, based on other UI
+ * elements. For example, only show alarm parameters if alarms are enabled.
+ */
 function updateAlarmInputsHidden() {
     // Element ids of rows shown if set_alarms is checked.
     var set_alarms_input_id = "set_alarms";

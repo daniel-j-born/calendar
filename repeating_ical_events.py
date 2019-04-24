@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+"""Generate icalendar (https://tools.ietf.org/html/rfc5545) data for repeating
+events. See main() for a usage example."""
 
 import datetime
 import icalendar
@@ -91,7 +92,8 @@ class ScheduleBuilder(object):
     self.SetDefaults()
 
   def SetDefaults(self):
-    """Configurable attributes."""
+    """Configurable attributes. These may be set before calling
+      BuildCalendar()"""
     self.merge_overlap = True
     self.set_alarms = False
     self.alarms_repeat = False
@@ -155,11 +157,14 @@ class ScheduleBuilder(object):
 
 
 def main(argv):
+  """Module unittest. Sets some pre-configured parameters and writes a calendar
+  to stdout."""
   start_time = datetime.datetime(year=2019, month=4, day=25, hour=7, minute=0,
                                   second=0)
   end_time = datetime.datetime(year=2019, month=4, day=29, hour=1, minute=0,
                                   second=0)
   scheduler = ScheduleBuilder(start_time, end_time)
+  scheduler.alarms_repeat = False
   scheduler.AddRepeatingEvent('Event Type 1', datetime.timedelta(hours=6))
   scheduler.AddRepeatingEvent('Event Type 2', datetime.timedelta(hours=2))
   cal = scheduler.BuildCalendar(UidGenerator('example.com'))

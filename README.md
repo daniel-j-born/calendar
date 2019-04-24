@@ -10,7 +10,6 @@ applications like Google Calendar.
 # Requirements
 
 * Python 3.6 or later
-
 * Python modules
   - icalendar
   - flask
@@ -18,22 +17,5 @@ applications like Google Calendar.
 
 # Installation
 
-Install files as they are arranged in the project. Something like:
-
-```
-chelation_calendar.py
-passenger_wsgi.py
-repeating_ical_events_flask.py
-repeating_ical_events.py
-static/repeating_ical_forms.js
-static/style.css
-templates/error.html
-templates/index.html
-```
-
-# TODO
-
-* Maybe some kind of border in the form table so the labels line up with the
-  inputs.
-* Change the orientation so the inputs are to the left of labels.
-* Make repository public.
+`passenger_wsgi.py` defines the `application` object. Run it from your Python
+server engine.

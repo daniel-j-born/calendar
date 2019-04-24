@@ -1,4 +1,4 @@
-# Python module to handle flask based requests for repeating_ical_events.
+"""Python module to handle flask based requests for repeating_ical_events."""
 
 import datetime
 import flask
@@ -31,12 +31,12 @@ class HostUidGen(object):
     except AttributeError:
       host = socket.getfqdn()
     with self._uid_gens_lock:
-      if host in self._uid_gens:
-        return self._uid_gens[host]
-      else:
-        uid_gen = repeating_ical_events.UidGenerator(host)
-        self._uid_gens[host] = uid_gen
+      uid_gen = self._uid_gens.get(host, None)
+      if uid_gen is not None:
         return uid_gen
+      uid_gen = repeating_ical_events.UidGenerator(host)
+      self._uid_gens[host] = uid_gen
+      return uid_gen
 
 
 class StaticVersions(object):
@@ -54,7 +54,9 @@ class StaticVersions(object):
       self.digest = digest
 
   def __init__(self, app, reload_when_mtime_changes=True):
-    """":param app: Flask app object"""
+    """":param app: Flask app object
+        :param reload_when_mtime_changes: If true, check mtime on disk and
+         reload when it changes."""
     self._app = app
     self._static = 'static'  # Special endpoint name for flask
     self._reload_when_mtime_changes = reload_when_mtime_changes
@@ -107,7 +109,7 @@ class StaticVersions(object):
     else:
       digest = self._NewDigest(basename)
     self._app.logger.info('New digest for static file %s: %s', basename, digest)
-    return flask.url_for(self._static, filename=basename, version=digest)
+    return flask.url_for(self._static, filename=basename, v=digest)
 
 
 def FieldSetError(field, msg):
@@ -222,7 +224,8 @@ class EventForm(wtforms.Form):
     'Event Period', [validators.InputRequired()],
     render_kw={'placeholder' : _period_ph})
 
-  # TODO: Create a Field subclass for input type="button"
+  # TODO: Create a Field subclass for input type="button". This is mostly
+  # implemented in the HTML template and JS for now.
   _delete_val = 'Delete Event'
 
 
@@ -266,7 +269,10 @@ class ScheduleForm(wtforms.Form):
                        min_entries=1, max_entries=100)
 
   def validate(self):
-    """Override validate() to only validate fields that are used."""
+    """Override validate() to only validate fields that are used according to
+      user specified configuration. Perform additional validation that applies
+      to relationships among multiple fields. For example, the timedelta between
+      end_time and start_time."""
     form_valid = True
     # Always validate:
     for field in (self.start_time, self.end_time, self.merge_overlapping,
@@ -342,6 +348,7 @@ class RequestHandler(object):
     self._req = req
 
   def Response(self):
+    """Return the response to the request given in __init__."""
     try:
       if self._req.method == 'POST':
         return self._CalendarDownload()
@@ -378,7 +385,7 @@ class RequestHandler(object):
 
   def _SetConfig(self, sched, form):
     """Set configuration data in sched from data in form.
-    form should be validated."""
+    form should have been validated."""
     sched.merge_overlap          = form.merge_overlapping.data
     sched.set_alarms             = form.set_alarms.data
     sched.alarms_repeat          = form.alarms_repeat.data
@@ -398,9 +405,7 @@ class RequestHandler(object):
     for event in form.events:
       sched.AddRepeatingEvent(event.summary.data, event.period.data)
     cal = sched.BuildCalendar(self._uid_gens.UidGen(self._req))
-    # TODO: Setting other than content-type to trigger download vs. display?
-    # Have filename include start day. How is versioned static URLs working?
-    # What prevents responses to mutating GETs for the same params from being
-    # cached by browsers? Do GET services always return a no-cache response to
-    # the browser?
-    return flask.Response(cal.to_ical(), mimetype='text/calendar')
+    resp = flask.Response(cal.to_ical(), mimetype='text/calendar')
+    resp.headers.add('Content-Disposition', 'attachment',
+        filename='repeating_events_%s.ics' % sched.start_time.strftime('%Y_%m_%d'))
+    return resp
