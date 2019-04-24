@@ -93,8 +93,8 @@ class ScheduleBuilder(object):
   def SetDefaults(self):
     """Configurable attributes."""
     self.merge_overlap = True
-    self.set_alarms = True
-    self.alarms_repeat = True
+    self.set_alarms = False
+    self.alarms_repeat = False
     self.alarm_repetitions = 60
     self.alarm_repetition_delay = datetime.timedelta(seconds=5)
     # Note: change to negative value in iCalendar objects.

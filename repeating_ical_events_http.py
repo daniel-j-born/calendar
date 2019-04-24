@@ -292,8 +292,11 @@ class ScheduleForm(wtforms.Form):
           if event.period.data <= datetime.timedelta(0):
             num_reps = 0
           else:
-            num_reps = int(total_period / event.period.data)
-          if num_reps < 1 or num_reps > 1000:
+            # start_time and end_time are an inclusive range, so if
+            # total_period==0 [or any value < event.period.data], there is one
+            # event.
+            num_reps = int(total_period / event.period.data) + 1
+          if num_reps > 1000:
             form_valid = False
             event.period.data = None
             if event.summary.data:
@@ -382,8 +385,8 @@ class RequestHandler(object):
     sched.alarm_repetitions      = form.alarm_repetitions.data
     sched.alarm_repetition_delay = form.alarm_repetition_delay_secs.data
     sched.alarm_before           = form.alarm_before_secs.data
-    sched.show_busy              = sched.show_busy.data
-    sched.event_duration         = sched.event_duration_secs.data
+    sched.show_busy              = form.show_busy.data
+    sched.event_duration         = form.event_duration_secs.data
 
   def _CalendarDownload(self):
     form = ScheduleForm(self._req.form)
@@ -395,4 +398,9 @@ class RequestHandler(object):
     for event in form.events:
       sched.AddRepeatingEvent(event.summary.data, event.period.data)
     cal = sched.BuildCalendar(self._uid_gens.UidGen(self._req))
+    # TODO: Setting other than content-type to trigger download vs. display?
+    # Have filename include start day. How is versioned static URLs working?
+    # What prevents responses to mutating GETs for the same params from being
+    # cached by browsers? Do GET services always return a no-cache response to
+    # the browser?
     return flask.Response(cal.to_ical(), mimetype='text/calendar')
