@@ -3,6 +3,7 @@
 import datetime
 import flask
 import hashlib
+import logging
 import os
 import re
 import repeating_ical_events
@@ -37,6 +38,22 @@ class HostUidGen(object):
       uid_gen = repeating_ical_events.UidGenerator(host)
       self._uid_gens[host] = uid_gen
       return uid_gen
+
+
+def SetupLogging(dirname, app, level):
+  try:
+    # TODO: mkdir -p
+    os.mkdir(dirname, mode=0o700)
+  except FileExistsError:
+    os.chmod(dirname, 0o700)
+  stemname = '%s_%s' % (__name__, datetime.datetime.now().strftime('%Y_%m_%d'))
+  path = os.path.join(dirname, '%s.log' % stemname)
+  handler = logging.FileHandler(path)
+  handler.set_name(stemname)
+  handler.setFormatter(logging.Formatter(
+    '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'))
+  app.logger.handlers.append(handler)
+  app.logger.setLevel(level)
 
 
 class StaticVersions(object):
@@ -103,7 +120,7 @@ class StaticVersions(object):
     else:
       path = self._PathFor(basename)
       digest = self._UpdateDigest(basename, path)
-    self._app.logger.info('New digest for static file %s: %s', path, digest)
+    self._app.logger.info('New digest for static file %s=%s', path, digest)
     return flask.url_for(self._static, filename=basename, v=digest)
 
 
@@ -347,18 +364,23 @@ class RequestHandler(object):
     """Return the response to the request given in __init__."""
     try:
       if self._req.method == 'POST':
-        return self._ValidateForm()
+        rv = self._ValidateForm()
       else:
-        return self._NewForm()
+        rv = self._NewForm()
     except:
       # Exceptions. Don't render any user messages.
-      self._app.logger.error('Unexpected exception: %s', traceback.format_exc())
-      return flask.make_response(
+      self._app.logger.error('Unexpected exception %s', traceback.format_exc())
+      rv = flask.make_response(
         flask.render_template('error.html',
             resources=self._static_versions,
             title='Internal Server Error',
             error_message='Internal Server Error'), 500)
-    
+    finally:
+      self._app.logger.info(
+        'method=%s path=%s remote=%s result=%s',
+        self._req.method, self._req.path, self._req.remote_addr, rv.status_code)
+      return rv
+
   def _IndexParams(self, form, autosubmit):
     return {
       'resources': self._static_versions,
