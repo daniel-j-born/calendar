@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="stylesheet" href="{{css_url}}" type="text/css" />
-    <script src="{{forms_js}}" type="text/javascript">
+    <link rel="stylesheet" href="{{ resources.UrlFor('style.css') }}" type="text/css" />
+    <script src="{{ resources.UrlFor('repeating_ical_forms.js') }}"
+            type="text/javascript">
     </script>
     <title>Repeating Events Scheduler</title>
   </head>
-  <body  onload="formsOnload('{{summary_ph_in}}', '{{period_ph_in}}', '{{delete_val_in}}')">
+  <body  onload="formsOnload('{{summary_ph_in}}', '{{period_ph_in}}', '{{delete_val_in}}', {{autosubmit}})">
     <h1 class="section">Repeating Events Scheduler</h1>
-    <form method="post" action="{{url_for('RepeatingEvents')}}">
+    <form id="form" method="post" action="{{ url_for('RepeatingEvents') }}">
       <table>
-        {% for field in form if field != form.events %}
+        {% for field in form if field not in [form.events, form.had_errors] %}
         <tr id="{{field.id}}_row"><td class="configinput">{{field}}</td>
           {% if field.errors %}
           <td class="configlabel">
@@ -48,6 +49,7 @@
         </tbody>
       </table>
       <input type="button" value="Add Event" onclick="addEvent()" />
+      {{ form.had_errors }}
       <input type="submit" value="Create Schedule" />
     </form>
   </body>

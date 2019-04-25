@@ -11,7 +11,7 @@ import traceback
 import wtforms
 
 from wtforms import (BooleanField, Field, FieldList, Form, FormField,
-     HiddenField, IntegerField, StringField, TextField, validators)
+                     HiddenField, IntegerField, StringField, validators)
 from wtforms.ext.dateutil.fields import DateTimeField
 
 
@@ -70,24 +70,18 @@ class StaticVersions(object):
   def _ComputeDigest(self, fh):
     return hashlib.sha256(fh.read()).hexdigest()[:32]
 
-  def _UpdateDigest(self, basename, path, mtime):
+  def _UpdateDigest(self, basename, path, mtime=None):
     """Update the cached entry for basename and return the digest."""
-    digest = None
     with open(path, 'rb') as fh:
+      if mtime is None:
+        mtime = os.fstat(fh.fileno()).st_mtime
       digest = self._ComputeDigest(fh)
     with self._lock:
-      self._fi[basename].Set(mtime, digest)
-    return digest
-
-  def _NewDigest(self, basename):
-    mtime = None
-    digest = None
-    path = self._PathFor(basename)
-    with open(path, 'rb') as fh:
-      mtime = os.fstat(fh.fileno()).st_mtime
-      digest = self._ComputeDigest(fh)
-    with self._lock:
-      self._fi[basename] = StaticVersions.FileInfo(mtime, digest)
+      fi = self._fi.get(basename, None)
+      if fi:
+        fi.Set(mtime, digest)
+      else:
+        self._fi[basename] = StaticVersions.FileInfo(mtime, digest)
     return digest
 
   def UrlFor(self, basename):
@@ -107,8 +101,9 @@ class StaticVersions(object):
         return flask.url_for(self._static, filename=basename, version=digest)
       digest = self._UpdateDigest(basename, path, latest_mtime)
     else:
-      digest = self._NewDigest(basename)
-    self._app.logger.info('New digest for static file %s: %s', basename, digest)
+      path = self._PathFor(basename)
+      digest = self._UpdateDigest(basename, path)
+    self._app.logger.info('New digest for static file %s: %s', path, digest)
     return flask.url_for(self._static, filename=basename, v=digest)
 
 
@@ -139,18 +134,18 @@ class SecondsField(IntegerField):
 
   def process_formdata(self, valuelist):
     if not valuelist:
-      return FieldSetError(self, 'missing value')
+      return FieldSetError(self, 'Missing value')
     s = valuelist[-1]  # Take only last value.
     min_secs = 0
     max_secs = 24*3600
     if len(s) > len(str(max_secs)):
-      return FieldSetError(self, 'too long')
+      return FieldSetError(self, 'Invalid format')
     try:
       i = int(s)
     except ValueError:
-      return FieldSetError(self, 'not an integer')
+      return FieldSetError(self, 'Not an integer')
     if i < min_secs or i > max_secs:
-      return FieldSetError(self, 'out of range')
+      return FieldSetError(self, 'Out of range')
     self.data = datetime.timedelta(seconds=i)
 
 
@@ -267,6 +262,7 @@ class ScheduleForm(wtforms.Form):
     [validators.InputRequired()], default=_d.alarm_repetition_delay)
   events = FieldList(FormField(EventForm), label='',
                        min_entries=1, max_entries=100)
+  had_errors = HiddenField()
 
   def validate(self):
     """Override validate() to only validate fields that are used according to
@@ -289,7 +285,7 @@ class ScheduleForm(wtforms.Form):
         self.start_time.data = None
         self.end_time.data = None
         self.end_time.errors.append(
-          'invalid period between start and end times: %s' % total_period)
+          'Invalid period between start and end times: %s' % total_period)
       else:
         # Valid total_period. Validate numbers of event repetitions.
         for event in self.events:
@@ -310,7 +306,7 @@ class ScheduleForm(wtforms.Form):
             else:
               summary = 'event'
             event.period.errors.append(
-              'invalid number of repetitions for %s: %d' % (summary, num_reps))
+              'Invalid number of repetitions for %s: %d' % (summary, num_reps))
     if self.set_alarms.data:
       # If alarms are enabled, validate additional required fields.
       for field in (self.alarm_before_secs, self.alarms_repeat,
@@ -332,7 +328,7 @@ class ScheduleForm(wtforms.Form):
             self.alarm_repetition_delay_secs.data = None
             self.alarm_repetitions.data = None
             self.alarm_repetition_delay_secs.errors.append(
-              'invalid alarm repetition duration %s' % rep_period)
+              'Invalid alarm repetition duration %s' % rep_period)
     return form_valid
 
 
@@ -351,37 +347,51 @@ class RequestHandler(object):
     """Return the response to the request given in __init__."""
     try:
       if self._req.method == 'POST':
-        return self._CalendarDownload()
+        return self._ValidateForm()
       else:
-        return self._CalendarForm()
+        return self._NewForm()
     except:
       # Exceptions. Don't render any user messages.
       self._app.logger.error('Unexpected exception: %s', traceback.format_exc())
       return flask.make_response(
-        flask.render_template(
-          'error.html',
-          css_url=self._static_versions.UrlFor('style.css'),
-          title='Internal Server Error',
-          error_message='Internal Server Error'), 500)
-
-  def _ErrorPage(self, form):
-    """Recreate the form with user inputs and error messages."""
-    return flask.make_response(
-      flask.render_template('index.html', **self._IndexParams(form)), 400)
-
-  def _IndexParams(self, form):
+        flask.render_template('error.html',
+            resources=self._static_versions,
+            title='Internal Server Error',
+            error_message='Internal Server Error'), 500)
+    
+  def _IndexParams(self, form, autosubmit):
     return {
-      'forms_js': self._static_versions.UrlFor('repeating_ical_forms.js'),
-      'css_url': self._static_versions.UrlFor('style.css'),
+      'resources': self._static_versions,
       'summary_ph_in': EventForm._summary_ph,
       'period_ph_in': EventForm._period_ph,
       'delete_val_in' : EventForm._delete_val,
       'form': form,
+      'autosubmit': 'true' if autosubmit else 'false',  # JS code
     }
 
-  def _CalendarForm(self):
-    return flask.render_template(
-      'index.html', **self._IndexParams(ScheduleForm()))
+  def _SendForm(self, form, autosubmit, response_code):
+    return flask.make_response(
+      flask.render_template('index.html',
+                            **self._IndexParams(form, autosubmit)),
+      response_code)
+
+  def _NewForm(self):
+    """Send the initial form."""
+    return self._SendForm(ScheduleForm(), False, 200)
+
+  def _BadRequestForm(self, form):
+    """Recreate the form with user inputs and error messages."""
+    form.had_errors.data = 'true'
+    return self._SendForm(form, False, 400)
+
+  def _ClearErrorsForm(self, form):
+    """Send a form with error messages removed in response to a user fixing
+    validation errors, then trigger an onload form.submit(). The ideal situation
+    would be if browsers could accept multipart responses. Then, we'd send
+    an inline HTML response and a text/calendar attachment in the same
+    response. Instead, we must make the browser issue multiple requests."""
+    form.had_errors.data = None
+    return self._SendForm(form, True, 200)
 
   def _SetConfig(self, sched, form):
     """Set configuration data in sched from data in form.
@@ -395,17 +405,34 @@ class RequestHandler(object):
     sched.show_busy              = form.show_busy.data
     sched.event_duration         = form.event_duration_secs.data
 
-  def _CalendarDownload(self):
+  def _ValidateForm(self):
+    """Validate form data. If not valid, display form with error messages.
+    If form data is valid, but was previously displayed with errors,
+    redisplay without errors, then trigger a download by calling form.submit()
+    from JS onload. Finally, if valid, and no errors were displayed previously,
+    just respond with form data (fewest request-response round trips)."""
     form = ScheduleForm(self._req.form)
     if not form.validate():
-      return self._ErrorPage(form)
+      return self._BadRequestForm(form)
+    if form.had_errors.data:
+      return self._ClearErrorsForm(form)
     sched = repeating_ical_events.ScheduleBuilder(
       form.start_time.data, form.end_time.data)
     self._SetConfig(sched, form)
     for event in form.events:
       sched.AddRepeatingEvent(event.summary.data, event.period.data)
     cal = sched.BuildCalendar(self._uid_gens.UidGen(self._req))
+    # TODO: Directly responding to form post with this text/calendar attachment
+    # triggers a browser debug console warning "Resource interpreted as
+    # Document". Setting target="_blank" would fix this in chrome, but we only
+    # know that _blank is the correct target after successful validation. We
+    # want the form and form with error messages to render to _self. We could
+    # force multiple round-trips every time to get rid of this warning. As it
+    # is now, the no-errors case is the optimal case in terms of round-trips.
+    # The extra round trip to clean up the errors displayed is a nice UI
+    # improvement. In firefox, _blank triggers popup blocking.
     resp = flask.Response(cal.to_ical(), mimetype='text/calendar')
     resp.headers.add('Content-Disposition', 'attachment',
-        filename='repeating_events_%s.ics' % sched.start_time.strftime('%Y_%m_%d'))
+        filename='repeating_events_%s.ics' % sched.start_time.strftime(
+          '%Y_%m_%d'))
     return resp

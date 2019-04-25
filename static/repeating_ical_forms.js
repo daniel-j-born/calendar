@@ -127,7 +127,7 @@ function setDefaultStartEndTimes() {
  *
  * Generally called from page onload.
  */
-function formsOnload(summary_ph_in, period_ph_in, delete_val_in) {
+function formsOnload(summary_ph_in, period_ph_in, delete_val_in, autosubmit) {
     summary_ph = summary_ph_in;
     period_ph = period_ph_in;
     delete_val = delete_val_in;
@@ -137,10 +137,19 @@ function formsOnload(summary_ph_in, period_ph_in, delete_val_in) {
     // Process default states of alarm settings.
     updateAlarmInputsHidden();
 
-    // Add an event row if there are none.
-    var events_table = document.getElementById(events_table_body_id);
-    if (events_table != null && events_table.children.length == 0) {
-        addEvent();
+    var form;
+    if (autosubmit && (form = document.getElementById("form"))) {
+        // Need new target to avoid chrome errors regarding loading
+        // text/calendar attachment data into _self. However, _blank triggers
+        // popup blocking in firefox.
+        //form.target = "_blank";
+        form.submit();
+    } else {
+        // Add an event row if there are none.
+        var events_table = document.getElementById(events_table_body_id);
+        if (events_table != null && events_table.children.length == 0) {
+            addEvent();
+        }
     }
 }
 
