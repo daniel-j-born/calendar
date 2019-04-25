@@ -46,7 +46,8 @@ def SetupLogging(dirname, app, level):
     os.mkdir(dirname, mode=0o700)
   except FileExistsError:
     os.chmod(dirname, 0o700)
-  stemname = '%s_%s' % (__name__, datetime.datetime.now().strftime('%Y_%m_%d'))
+  stemname = '%s_%s.%d' % (
+    __name__, datetime.datetime.now().strftime('%Y_%m_%d'), os.getpid())
   path = os.path.join(dirname, '%s.log' % stemname)
   handler = logging.FileHandler(path)
   handler.set_name(stemname)
