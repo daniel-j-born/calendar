@@ -271,7 +271,11 @@ class EventForm(wtforms.Form):
 # Default values for unfilled form fields.
 _d = repeating_ical_events.ScheduleBuilder(None, None)
 
-
+#TODO: set initial values for hidden status of document elements based on
+#checkbox states rather than waiting for it to happen in JS client side. The UI
+#flickers, especially on slower connections and browsers. Client side JS should
+#still be able to change states, but initial hidden states should be set
+#properly serverside.
 class ScheduleForm(wtforms.Form):
   # Default start_time and end_time are set to the user's local time using
   # Javascript.
