@@ -4,6 +4,7 @@ import datetime
 import flask
 import hashlib
 import logging
+import logging.handlers
 import os
 import re
 import repeating_ical_events
@@ -41,18 +42,43 @@ class HostUidGen(object):
 
 
 def SetupLogging(dirname, app, level):
+  dir_perms = 0o700
   try:
     # TODO: mkdir -p
-    os.mkdir(dirname, mode=0o700)
+    os.mkdir(dirname, mode=dir_perms)
   except FileExistsError:
-    os.chmod(dirname, 0o700)
-  stemname = '%s_%s.%d' % (
-    __name__, datetime.datetime.now().strftime('%Y_%m_%d'), os.getpid())
+    os.chmod(dirname, dir_perms)
+  # Remove old log files.
+  max_old_files = 100
+  # list of 2-tuples (path, mtime)
+  file_mtime = []
+  for basename in os.listdir(dirname):
+    path = os.path.join(dirname, basename)
+    try:
+      file_mtime.append((path, os.stat(path).st_mtime))
+    except FileNotFoundError:
+      pass  # Some other instance of this deleted it already?
+  if len(file_mtime) > max_old_files:
+    file_mtime.sort(key=lambda x: x[1])
+    for path, _ in file_mtime[:len(file_mtime) - max_old_files]:
+      try:
+        os.unlink(path)
+      except FileNotFoundError:
+        pass  # Some other instance of this deleted it already?
+  stemname = '%s.%d' % (__name__, os.getpid())
   path = os.path.join(dirname, '%s.log' % stemname)
-  handler = logging.FileHandler(path)
+  handler = logging.handlers.RotatingFileHandler(
+    path, maxBytes=2**20, backupCount=9, delay=True)
   handler.set_name(stemname)
+  # Same as flask format.
   handler.setFormatter(logging.Formatter(
     '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'))
+  # Replace open method with a method that sets permissions. This is the same
+  # as the FileHandler._open method, but with a custom opener to set the
+  # permissions on new files.
+  handler._open = lambda: open(
+    handler.baseFilename, handler.mode, encoding=handler.encoding,
+    opener=lambda path, flags: os.open(path, flags, mode=0o600))
   app.logger.handlers.append(handler)
   app.logger.setLevel(level)
 
