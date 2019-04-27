@@ -12,7 +12,9 @@
     <form id="form" method="post" action="{{ url_for('RepeatingEvents') }}">
       <table>
         {% for field in form if field not in [form.events, form.had_errors] %}
-        <tr id="{{field.id}}_row"><td class="configinput">{{field}}</td>
+        <tr id="{{field.id}}_row"
+            {% if form.IsHidden(field) %} hidden="hidden" {% endif %}>
+          <td class="configinput">{{field}}</td>
           {% if field.errors %}
           <td class="configlabel">
             <span class="error">

@@ -271,11 +271,7 @@ class EventForm(wtforms.Form):
 # Default values for unfilled form fields.
 _d = repeating_ical_events.ScheduleBuilder(None, None)
 
-#TODO: set initial values for hidden status of document elements based on
-#checkbox states rather than waiting for it to happen in JS client side. The UI
-#flickers, especially on slower connections and browsers. Client side JS should
-#still be able to change states, but initial hidden states should be set
-#properly serverside.
+
 class ScheduleForm(wtforms.Form):
   # Default start_time and end_time are set to the user's local time using
   # Javascript.
@@ -357,18 +353,19 @@ class ScheduleForm(wtforms.Form):
               'Invalid number of repetitions for %s: %d' % (summary, num_reps))
     if self.set_alarms.data:
       # If alarms are enabled, validate additional required fields.
-      for field in (self.alarm_before_secs, self.alarms_repeat,
-                      self.alarm_repetitions, self.alarm_repetition_delay_secs):
+      for field in (self.alarm_before_secs, self.alarms_repeat):
         if not field.validate(self):
           form_valid = False
       if self.alarms_repeat.data:
         # If alarm repeats are enabled, validate additional.
+        repeats_valid = True
         for field in (self.alarm_repetition_delay_secs,
                         self.alarm_repetitions):
           if not field.validate(self):
+            repeats_valid = False
             form_valid = False
-        if (self.alarm_repetition_delay_secs.data is not None and
-            self.alarm_repetitions.data is not None):
+        if (repeats_valid and self.alarm_repetition_delay_secs.data is not None
+            and self.alarm_repetitions.data is not None):
           rep_period = (self.alarm_repetition_delay_secs.data *
                           self.alarm_repetitions.data)
           if rep_period > datetime.timedelta(hours=24):
@@ -378,6 +375,21 @@ class ScheduleForm(wtforms.Form):
             self.alarm_repetition_delay_secs.errors.append(
               'Invalid alarm repetition duration %s' % rep_period)
     return form_valid
+
+  def IsHidden(self, field):
+    """Return true if field should be hidden. Used to hide irrelevant fields.
+    E.g, alarm duration if alarms are diabled. JS will be used to hide/unhide
+    dynamically clientside. This is for the initial view before JS loads and
+    runs.
+    :param field: a field of ScheduleForm."""
+    alarm_fields = [self.alarm_before_secs, self.alarms_repeat]
+    alarms_repeat_fields = [self.alarm_repetitions,
+                              self.alarm_repetition_delay_secs]
+    if field in alarm_fields:
+      return not self.set_alarms.data
+    if field in alarms_repeat_fields:
+      return not self.set_alarms.data or not self.alarms_repeat.data
+    return False
 
 
 del _d  # Defaults needed only for class ScheduleForm definition.
