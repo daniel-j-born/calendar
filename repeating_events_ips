@@ -1,0 +1,10 @@
+#!/usr/bin/env perl
+#
+# Parse IPs from repeating_ical_events_http.SetupLogging() output.
+#
+
+@ARGV = glob('~/repeating_events/log/*') unless @ARGV;
+while (<>) {
+  ++$ip{$1} if /remote=(\S+)/;
+}
+map { print "$_ $ip{$_}\n" } sort { $ip{$b} <=> $ip{$a} } keys %ip;
