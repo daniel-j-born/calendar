@@ -43,11 +43,8 @@ class HostUidGen(object):
 
 def SetupLogging(dirname, app, level):
   dir_perms = 0o700
-  try:
-    # TODO: mkdir -p
-    os.mkdir(dirname, mode=dir_perms)
-  except FileExistsError:
-    os.chmod(dirname, dir_perms)
+  os.makedirs(dirname, mode=dir_perms, exist_ok=True)
+  os.chmod(dirname, dir_perms)
   # Remove old log files.
   max_old_files = 100
   # list of 2-tuples (path, mtime)
