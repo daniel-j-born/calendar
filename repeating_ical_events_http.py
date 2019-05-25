@@ -125,6 +125,9 @@ class StaticVersions(object):
         self._fi[basename] = StaticVersions.FileInfo(mtime, digest)
     return digest
 
+  def _UrlWithDigest(self, basename, digest):
+    return flask.url_for(self._static, filename=basename, v=digest)
+
   def UrlFor(self, basename):
     mtime = None
     digest = None
@@ -135,17 +138,17 @@ class StaticVersions(object):
         digest = fi.digest
     if digest:
       if not self._reload_when_mtime_changes:
-        return flask.url_for(self._static, filename=basename, version=digest)
+        return self._UrlWithDigest(basename, digest)
       path = self._PathFor(basename)
       latest_mtime = os.stat(path).st_mtime
       if latest_mtime == mtime:
-        return flask.url_for(self._static, filename=basename, version=digest)
+        return self._UrlWithDigest(basename, digest)
       digest = self._UpdateDigest(basename, path, latest_mtime)
     else:
       path = self._PathFor(basename)
       digest = self._UpdateDigest(basename, path)
     self._app.logger.info('New digest for static file %s=%s', path, digest)
-    return flask.url_for(self._static, filename=basename, v=digest)
+    return self._UrlWithDigest(basename, digest)
 
 
 def FieldSetError(field, msg):
