@@ -201,7 +201,7 @@ class EventPeriodField(StringField):
     self._event_wrapper_form = kw_args.get('_form', None)
 
   def _value(self):
-    """Return raw_data is data is not set."""
+    """Return raw_data if data is not set."""
     if type(self.data) == datetime.timedelta:
       s = int(self.data.total_seconds())
       h = s // 3600
@@ -275,6 +275,8 @@ _d = repeating_ical_events.ScheduleBuilder(None, None)
 class ScheduleForm(wtforms.Form):
   # Default start_time and end_time are set to the user's local time using
   # Javascript.
+  #
+  # TODO: Sometimes renders "MM" as "0" (no leading zero)
   start_time = DateTimeField(
     'Start Time', [validators.InputRequired()],
     render_kw={'placeholder' : 'YYYY/MM/DD HH:MM'})
